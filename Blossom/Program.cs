@@ -1,114 +1,109 @@
-﻿DiscordSocketClient client = new(new DiscordSocketConfig
-{
-    AlwaysDownloadUsers = true,
-    DefaultRetryMode = RetryMode.RetryRatelimit,
-    GatewayIntents = GatewayIntents.All,
-    LogGatewayIntentWarnings = true,
-    LogLevel = LogSeverity.Info,
-    MessageCacheSize = 100,
-});
-
-CommandService commandService = new(new CommandServiceConfig
-{
-    CaseSensitiveCommands = true,
-    DefaultRunMode = RunMode.Async,
-    IgnoreExtraArgs = true,
-    LogLevel = LogSeverity.Info
-});
-
-LavaNode lavaNode = new(client, new LavaConfig
-{
-    LogSeverity = LogSeverity.Info,
-    SelfDeaf = true,
-});
-
-Configuration configuration = new();
-
-ServiceProvider provider = new ServiceCollection()
-    .AddSingleton(client)
-    .AddSingleton(commandService)
-    .AddSingleton(lavaNode)
-    .AddSingleton(configuration)
+﻿ServiceProvider services = new ServiceCollection()
+    .AddSingleton<DiscordSocketClient>((_) => new(new DiscordSocketConfig
+    {
+        AlwaysDownloadUsers = true,
+        DefaultRetryMode = RetryMode.RetryRatelimit,
+        GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMembers | GatewayIntents.GuildBans | GatewayIntents.GuildEmojis | GatewayIntents.GuildIntegrations 
+            | GatewayIntents.GuildWebhooks | GatewayIntents.GuildVoiceStates | GatewayIntents.GuildMessages | GatewayIntents.GuildMessageReactions 
+            | GatewayIntents.GuildMessageTyping | GatewayIntents.DirectMessages | GatewayIntents.DirectMessageReactions | GatewayIntents.DirectMessageTyping,
+        LogGatewayIntentWarnings = true,
+        LogLevel = LogSeverity.Info,
+        MessageCacheSize = 100,
+    }))
+    .AddSingleton<InteractionService>((provider) => new(provider.GetService<DiscordSocketClient>(), new InteractionServiceConfig
+    {
+        DefaultRunMode = RunMode.Async,
+        LogLevel = LogSeverity.Info,
+        EnableAutocompleteHandlers = true,
+    }))
+    .AddLavaNode((config) =>
+    {
+        config.LogSeverity = LogSeverity.Info;
+        config.SelfDeaf = true;
+    })
+    .AddSingleton<Configuration>((_) => ConfigurationService.TryLoad())
     .AddSingleton<Random>()
     .AddSingleton<HttpClient>()
     .BuildServiceProvider();
 
-Func<LogMessage, Task> log = m =>
+DiscordSocketClient client = services.GetService<DiscordSocketClient>();
+InteractionService interactionService = services.GetService<InteractionService>();
+LavaNode lavaNode = services.GetService<LavaNode>();
+Configuration configuration = services.GetService<Configuration>();
+
+Func<LogMessage, Task> onLog = logDetails =>
 {
-    Logger.Log($" [{m.Severity.ToString().ToUpper()}] ({m.Source}) --> {(m.Exception != null ? m.Exception : m.Message)}",
-        m.Severity switch
-        {
-            LogSeverity.Critical => ConsoleColor.Magenta,
-            LogSeverity.Error => ConsoleColor.Magenta,
-            LogSeverity.Warning => ConsoleColor.Yellow,
-            LogSeverity.Info => ConsoleColor.Cyan,
-            _ => ConsoleColor.White
-        });
+    string message = $" [{logDetails.Severity.ToString().ToUpper()}] ({logDetails.Source}) --> {(logDetails.Exception != null ? logDetails.Exception.Message : logDetails.Message)}";
+
+    switch (logDetails.Severity)
+    {
+        case LogSeverity.Critical:
+            LoggerService.Critical(message);
+            break;
+
+        case LogSeverity.Error:
+            LoggerService.Error(message);
+            break;
+
+        case LogSeverity.Warning:
+            LoggerService.Warning(message);
+            break;
+
+        case LogSeverity.Info:
+            LoggerService.Info(message);
+            break;
+
+        default:
+            break;
+    }
 
     return Task.CompletedTask;
 };
 
-client.Log += log;
-commandService.Log += log;
-lavaNode.OnLog += log;
+client.Log += onLog;
+interactionService.Log += onLog;
+lavaNode.OnLog += onLog;
 
 client.Ready += async () =>
 {
-    try
-    {
-        await lavaNode.ConnectAsync();
-    }
-    catch
-    {
-    }
+    AudioService.Initialize(services);
+
+    await interactionService.RegisterCommandsGloballyAsync();
 
     await client.SetStatusAsync(UserStatus.Idle);
-    await client.SetGameAsync("Spotify", null, ActivityType.Listening);
+    await client.SetGameAsync("Weywey and Yunyun on their journey.", null, ActivityType.Watching);
 };
 
-client.MessageReceived += async message =>
+client.InteractionCreated += async (interaction) =>
 {
-    if (message.Author.IsBot || message.Channel is IDMChannel)
+    SocketInteractionContext context = new(client, interaction);
+    await interactionService.ExecuteCommandAsync(context, services);
+};
+
+interactionService.SlashCommandExecuted += async (command, context, result) =>
+{
+    if (!result.IsSuccess)
     {
-        return;
-    }
-
-    int argPos = 0;
-    SocketUserMessage socketUserMessage = message as SocketUserMessage;
-
-    if (!socketUserMessage.HasStringPrefix(configuration.Prefix, ref argPos))
-    {
-        return;
-    }
-
-    SocketCommandContext context = new(client, socketUserMessage);
-
-    IResult result = await commandService.ExecuteAsync(context, argPos, provider);
-
-    if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
-    {
-        await context.Channel.SendMessageAsync(result.Error switch
+        await context.Interaction.RespondAsync(result.Error switch
         {
-            CommandError.ParseFailed => "Invalid parameters passed to execute!",
-            CommandError.BadArgCount => "Invalid count of parameters!",
-            CommandError.ObjectNotFound => "Could not find any Discord object!",
-            CommandError.MultipleMatches => "Multiple commands were found. Please be more specific!",
-            CommandError.UnmetPrecondition => "Not enough authority to execute this command!",
-            CommandError.Exception => $"Command exception: `{result.ErrorReason}`",
-            CommandError.Unsuccessful => "Command could not be executed!",
-            _ => $"Error: {result.ErrorReason}"
-        });
+            InteractionCommandError.UnknownCommand => "Unknown command tried to execute!",
+            InteractionCommandError.ConvertFailed => "Passed argument failed to convert!",
+            InteractionCommandError.BadArgs => "Invalid count of arguments!",
+            InteractionCommandError.Exception => $"Command exception: `{result.ErrorReason}`",
+            InteractionCommandError.Unsuccessful => "Command execution was unsuccessful!",
+            InteractionCommandError.UnmetPrecondition => result.ErrorReason,
+            InteractionCommandError.ParseFailed => "Command failed to parse!",
+            _ => $"Error: {result.ErrorReason}",
+        }, ephemeral: true);
     }
 };
 
-await commandService.AddModuleAsync<AudioModule>(provider);
-await commandService.AddModuleAsync<DeveloperModule>(provider);
-await commandService.AddModuleAsync<FunModule>(provider);
-await commandService.AddModuleAsync<HelpModule>(provider);
-await commandService.AddModuleAsync<InformationModule>(provider);
-await commandService.AddModuleAsync<ModerationModule>(provider);
-await commandService.AddModuleAsync<OwnerModule>(provider);
+await interactionService.AddModuleAsync<AudioModule>(services);
+await interactionService.AddModuleAsync<DeveloperModule>(services);
+await interactionService.AddModuleAsync<FunModule>(services);
+await interactionService.AddModuleAsync<InformationModule>(services);
+await interactionService.AddModuleAsync<ModerationModule>(services);
 
-await client.LoginAsync(TokenType.Bot, configuration.Token, true);
+await client.LoginAsync(TokenType.Bot, configuration.Token, validateToken: true);
 await client.StartAsync();
 await Task.Delay(Timeout.Infinite);

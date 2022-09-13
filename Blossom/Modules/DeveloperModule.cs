@@ -1,33 +1,33 @@
 ﻿namespace Blossom.Modules;
 
-[Name("Developer Module")]
-public class DeveloperModule : ModuleBase
+[EnabledInDm(isEnabled: true)]
+public class DeveloperModule : InteractionModuleBase
 {
     public DeveloperModule(IServiceProvider serviceProvider) : base(serviceProvider)
     {
     }
 
-    [Command("ascii"), Summary("Returns the ASCII value of a character")]
-    public async Task AsciiCommand([Summary("The value to convert")] char character)
+    [SlashCommand("ascii", "Returns the ASCII value of a character")]
+    public async Task AsciiCommand([Summary(description: "The value to convert")] char character)
     {
-        await ReplyAsync($"`{character}`: {(int)character}");
+        await RespondAsync($"`{character}`: {(int)character}");
     }
 
-    [Command("binary"), Summary("Returns the binary value of a decimal number")]
-    public async Task BinaryCommand([Summary("The value to convert")] int value)
+    [SlashCommand("binary", "Returns the binary value of a decimal number")]
+    public async Task BinaryCommand([Summary(description: "The value to convert")] int value)
     {
-        await ReplyAsync($"`{value}`: {Convert.ToString(value, 2)}");
+        await RespondAsync($"`{value}`: {Convert.ToString(value, 2)}");
     }
 
-    [Command("octal"), Summary("Returns the octal value of a decimal number")]
-    public async Task OctalCommand([Summary("The value to convert")] int value)
+    [SlashCommand("octal", "Returns the octal value of a decimal number")]
+    public async Task OctalCommand([Summary(description: "The value to convert")] int value)
     {
-        await ReplyAsync($"`{value}`: {Convert.ToString(value, 8)}");
+        await RespondAsync($"`{value}`: {Convert.ToString(value, 8)}");
     }
 
-    [Command("hexal"), Summary("Returns the hexal value of a decimal number")]
-    public async Task HexalCommand([Summary("The value to convert")] int value)
+    [SlashCommand("hexal", "Returns the hexal value of a decimal number")]
+    public async Task HexalCommand([Summary(description: "The value to convert")] int value)
     {
-        await ReplyAsync($"`{value}`: {Convert.ToString(value, 16)}");
+        await RespondAsync($"`{value}`: {Convert.ToString(value, 16)}");
     }
 }

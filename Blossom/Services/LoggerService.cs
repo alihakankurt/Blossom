@@ -1,6 +1,6 @@
-﻿namespace Blossom;
+﻿namespace Blossom.Services;
 
-public static class Logger
+public static class LoggerService
 {
     public static void Critical(string content)
     {
@@ -22,7 +22,12 @@ public static class Logger
         Log(content, ConsoleColor.Cyan);
     }
 
-    public static void Log(string content, ConsoleColor color)
+    public static void Log(string content)
+    {
+        Log(content, ConsoleColor.White);
+    }
+
+    private static void Log(string content, ConsoleColor color)
     {
         Console.ForegroundColor = color;
         Console.WriteLine($"[{DateTime.Now.ToLongTimeString()}] {content}");
