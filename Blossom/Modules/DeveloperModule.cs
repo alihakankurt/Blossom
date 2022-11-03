@@ -1,9 +1,9 @@
 ﻿namespace Blossom.Modules;
 
-[EnabledInDm(isEnabled: true)]
-public class DeveloperModule : InteractionModuleBase
+[EnabledInDm(true)]
+public sealed class DeveloperModule : BaseInteractionModule
 {
-    public DeveloperModule(IServiceProvider serviceProvider) : base(serviceProvider)
+    public DeveloperModule(IServiceProvider services) : base(services)
     {
     }
 

@@ -1,149 +1,71 @@
 ﻿namespace Blossom.Modules;
 
-public class InteractionModuleBase : InteractionModuleBase<SocketInteractionContext>
+public abstract class BaseInteractionModule : InteractionModuleBase<SocketInteractionContext>
 {
-    public static readonly Color Cherry = new(227, 30, 82);
-    private readonly Random _random;
+    private const string FieldValueNull = "null";
 
-    public IServiceProvider ServiceProvider { get; }
+    protected static readonly Color Cherry;
 
-    public Configuration Configuration { get; }
+    protected IServiceProvider Services { get; }
+    protected DiscordSocketClient Client { get; }
+    protected InteractionService InteractionService { get; }
+    protected ISocketMessageChannel Channel => Context.Channel;
+    protected SocketGuild Guild => Context.Guild;
+    protected SocketInteraction Interaction => Context.Interaction;
+    protected SocketUser User => Context.User;
 
-    public DiscordSocketClient Client { get; }
-
-    public InteractionService InteractionService { get; }
-
-    public HttpClient HttpClient { get; }
-
-    public ISocketMessageChannel Channel => Context.Channel;
-
-    public SocketGuild Guild => Context.Guild;
-
-    public SocketInteraction Interaction => Context.Interaction;
-
-    public SocketUser User => Context.User;
-
-    public InteractionModuleBase(IServiceProvider serviceProvider)
+    static BaseInteractionModule()
     {
-        ServiceProvider = serviceProvider;
-        Configuration = serviceProvider.GetService<Configuration>();
-        Client = serviceProvider.GetService<DiscordSocketClient>();
-        InteractionService = serviceProvider.GetService<InteractionService>();
-        HttpClient = serviceProvider.GetService<HttpClient>();
-
-        _random = serviceProvider.GetService<Random>();
+        Cherry = new Color(227, 30, 82);
     }
 
-    public async Task RespondEphemeralAsync(string text)
+    public BaseInteractionModule(IServiceProvider services)
     {
-        await RespondAsync(text, ephemeral: true);
+        Services = services;
+        Client = services.GetRequiredService<DiscordSocketClient>();
+        InteractionService = services.GetRequiredService<InteractionService>();
     }
 
-    public async Task RespondWithEmbedAsync(params FieldBuilder[] fields)
+    public Task RespondEphemeralAsync(string text)
     {
-        await RespondWithEmbedAsync(null, null, null, null, null, fields);
+        return RespondAsync(text, ephemeral: true);
     }
 
-    public async Task RespondWithEmbedAsync(string description, params FieldBuilder[] fields)
+    public Task RespondWithEmbedAsync(string? title = default, string? description = default, string? thumbnail = default, EmbedAuthorBuilder? author = default, EmbedFooterBuilder? footer = default, EmbedFieldBuilder[]? fields = default)
     {
-        await RespondWithEmbedAsync(null, description, null, null, null, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, params FieldBuilder[] fields)
-    {
-        await RespondWithEmbedAsync(title, description, null, null, null, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, string thumbnailUrl, params FieldBuilder[] fields)
-    {
-        await RespondWithEmbedAsync(title, description, thumbnailUrl, null, null, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, string thumbnailUrl, Color color, params FieldBuilder[] fields)
-    {
-        await RespondWithEmbedAsync(title, description, thumbnailUrl, color, null, null, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, string thumbnailUrl, AuthorBuilder authorBuilder, params FieldBuilder[] fields)
-    {
-        await RespondWithEmbedAsync(title, description, thumbnailUrl, authorBuilder, null, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, string thumbnailUrl, FooterBuilder footerBuilder, params FieldBuilder[] fields)
-    {
-        await RespondWithEmbedAsync(title, description, thumbnailUrl, null, footerBuilder, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, string thumbnailUrl, AuthorBuilder authorBuilder, FooterBuilder footerBuilder, params FieldBuilder[] fields)
-    {
-        await RespondWithEmbedAsync(title, description, thumbnailUrl, Cherry, authorBuilder, footerBuilder, fields);
-    }
-
-    public async Task RespondWithEmbedAsync(string title, string description, string thumbnailUrl, Color color, AuthorBuilder authorBuilder, FooterBuilder footerBuilder, params FieldBuilder[] fields)
-    {
-        await RespondAsync(embed: new EmbedBuilder()
+        Embed embed = new EmbedBuilder()
             .WithTitle(title)
             .WithDescription(description)
-            .WithThumbnailUrl(thumbnailUrl)
-            .WithColor(color)
-            .WithAuthor(authorBuilder)
-            .WithFooter(footerBuilder)
-            .WithFields(fields)
-            .Build()
-        );
+            .WithThumbnailUrl(thumbnail)
+            .WithColor(Cherry)
+            .WithAuthor(author)
+            .WithFooter(footer)
+            .WithFields(fields ?? Array.Empty<EmbedFieldBuilder>())
+            .Build();
+
+        return RespondAsync(embed: embed);
     }
 
-    public string CutOff(string text, int length)
+    public static EmbedAuthorBuilder? CreateAuthor(string name, string? iconUrl = default, string? url = default)
     {
-        return (text.Length < length) ? text : $"{text[..(length - 3)]}...";
+        return new EmbedAuthorBuilder()
+            .WithName(name)
+            .WithIconUrl(iconUrl)
+            .WithUrl(url);
     }
 
-    public int RandomNumber()
+    public static EmbedFooterBuilder CreateFooter(string text, string? iconUrl = default)
     {
-        return _random.Next();
+        return new EmbedFooterBuilder()
+            .WithText(text)
+            .WithIconUrl(iconUrl);
     }
 
-    public int RandomNumber(int max)
+    public static EmbedFieldBuilder CreateField(string name, object? value, bool inline = false)
     {
-        return _random.Next(max + 1);
-    }
-
-    public int RandomNumber(int min, int max)
-    {
-        return _random.Next(min, max + 1);
-    }
-
-    public T Choose<T>(params T[] values)
-    {
-        return values[_random.Next(values.Length)];
-    }
-
-    public class AuthorBuilder : EmbedAuthorBuilder
-    {
-        public AuthorBuilder(string name, string iconUrl = null, string url = null)
-        {
-            Name = name;
-            IconUrl = iconUrl;
-            Url = url;
-        }
-    }
-
-    public class FooterBuilder : EmbedFooterBuilder
-    {
-        public FooterBuilder(string text, string iconUrl)
-        {
-            Text = text;
-            IconUrl = iconUrl;
-        }
-    }
-
-    public class FieldBuilder : EmbedFieldBuilder
-    {
-        public FieldBuilder(string name, object value, bool inline = false)
-        {
-            Name = name;
-            Value = value;
-            IsInline = inline;
-        }
+        return new EmbedFieldBuilder()
+            .WithName(name)
+            .WithValue(value ?? FieldValueNull)
+            .WithIsInline(inline);
     }
 }

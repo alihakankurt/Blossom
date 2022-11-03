@@ -1,8 +1,10 @@
-﻿namespace Blossom.Preconditions;
+﻿using System.Globalization;
+
+namespace Blossom.Preconditions;
 
 public sealed class EnsureVoiceStateAttribute : PreconditionAttribute
 {
-    public const string InvalidVoiceStateMessage = "Player isn't currently {0}!";
+    private const string InvalidVoiceStateMessage = "Player isn't currently {0}!";
 
     private readonly PlayerState _playerState;
 
@@ -13,9 +15,11 @@ public sealed class EnsureVoiceStateAttribute : PreconditionAttribute
 
     public override Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services)
     {
-        LavaPlayer player = AudioService.GetPlayer(context.Guild);
-        return player is not null && player.PlayerState != _playerState
-            ? Task.FromResult(PreconditionResult.FromError(string.Format(InvalidVoiceStateMessage, _playerState.ToString().ToLower())))
-            : Task.FromResult(PreconditionResult.FromSuccess());
+        LavaPlayer? player = services.GetRequiredService<AudioService>().GetPlayer(context.Guild);
+        return Task.FromResult(
+            (player is not null && player.PlayerState != _playerState)
+                ? PreconditionResult.FromError(string.Format(InvalidVoiceStateMessage, _playerState.ToString().ToLower()))
+                : PreconditionResult.FromSuccess()
+        );
     }
 }

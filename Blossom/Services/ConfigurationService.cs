@@ -1,24 +1,47 @@
 ﻿namespace Blossom.Services;
 
-public static class ConfigurationService
+public sealed class ConfigurationService
 {
-    public const string FileName = "configuration.cfg";
+    private const string FileName = "config.cfg";
+    private const string Seperator = "==";
 
-    public static Configuration TryLoad()
+    private readonly Dictionary<string, string> _keyValuePairs = new();
+
+    public void LoadFromFile()
     {
-        try
+        string path = Path.Combine(AppContext.BaseDirectory, FileName);
+        if (!File.Exists(path))
         {
-            IConfigurationRoot configurationRoot = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile(FileName)
-                .Build();
+            throw new FileNotFoundException($"Configuration file not found! Make sure you have a file named {FileName}");
+        }
 
-            return new(configurationRoot["Token"], configurationRoot["Version"]);
-        }
-        catch
+        Array.ForEach(File.ReadAllLines(path), (line) =>
         {
-            Environment.Exit(1);
-            throw new("Configuration couldn't be loaded...");
-        }
+            string[] lines = line.Split(Seperator).ToArray();
+            if (lines.Length is not 2)
+            {
+                throw new InvalidOperationException($"Invalid matching on {line} in configuration file! Make sure you seperated the key and value with {Seperator}");
+            }
+
+            _keyValuePairs.Add(lines[0], lines[1]);
+        });
+    }
+
+    public string Get(string key)
+    {
+        return _keyValuePairs.TryGetValue(key, out string? value)
+            ? value
+            : throw new InvalidOperationException($"Couldn't find {key} in configuration");
+    }
+
+    public T Get<T>(string key)
+    {
+        string value = Get(key);
+
+        System.ComponentModel.TypeConverter converter = System.ComponentModel.TypeDescriptor.GetConverter(typeof(T));
+
+        return converter.CanConvertFrom(typeof(string))
+            ? (T)converter.ConvertFrom(value)!
+            : throw new InvalidCastException($"Couldn't convert {value} to {typeof(T)}");
     }
 }
