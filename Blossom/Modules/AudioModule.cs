@@ -1,6 +1,5 @@
 ﻿namespace Blossom.Modules;
 
-[EnabledInDm(false)]
 public sealed class AudioModule : BaseInteractionModule
 {
     private const string StreamDescription = "`🔴 LIVE `";
@@ -108,6 +107,8 @@ public sealed class AudioModule : BaseInteractionModule
         await RespondAsync($"Seeked to `{timespan:mm':'ss}`.");
     }
 
+    // FIXME: The `filter` command breaks the playback that
+    // The newer version of Victoria may cause that
     [SlashCommand("filter", "Applies a filter to audio"), RequirePlayerJoined, RequireUserInVoiceChannel]
     public async Task FilterCommand([Summary(description: "The name of the filter"), Autocomplete(typeof(FilterAutocompleteHandler))] string filter)
     {

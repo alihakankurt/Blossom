@@ -1,6 +1,5 @@
 ﻿namespace Blossom.Modules;
 
-[EnabledInDm(true)]
 public sealed class FunModule : BaseInteractionModule
 {
     private const string UwuUrl = "https://www.youtube.com/watch?v=PqIMNE7QBSQ";
@@ -39,13 +38,46 @@ public sealed class FunModule : BaseInteractionModule
     [SlashCommand("roll", "Rolls a dice")]
     public async Task RollCommand()
     {
-        await RespondWithEmbedAsync($":game_die: {(1..6).Random()}");
+        await RespondWithEmbedAsync($":game_die: {Extensions.Random(1, 7)}");
+    }
+
+    [SlashCommand("luck", "Checks your luck")]
+    public async Task LuckCommand()
+    {
+        float luck = Extensions.Random(0, 101);
+        string message = $"Your luck ratio is `{luck / 100.0:n2}`. ";
+        if (luck < 1)
+        {
+            message += "I suggest you, go kill yourself. This is the painless way for you. There is no hope for you.";
+        }
+        else if (luck < 20)
+        {
+            message += "You can live your poor life.";
+        }
+        else if (luck < 50)
+        {
+            message += "You have a bad luck but still there is a litte bit of hope.";
+        }
+        else if (luck < 70)
+        {
+            message += "You are a average person with possibilities. Nothing special.";
+        }
+        else if (luck < 100)
+        {
+            message += "You have a life to live dude.";
+        }
+        else
+        {
+            message += "You are the luckiest person in the world!";
+        }
+
+        await RespondAsync(message);
     }
 
     [SlashCommand("uwu", "uwu")]
     public async Task UwuCommand()
     {
-        if (Channel is not IDMChannel && (0..99).Random() < 4)
+        if (Channel is not IDMChannel && Extensions.Random(0, 101) < 4)
         {
             LavaPlayer? player = _audioService.GetPlayer(Guild);
             IVoiceState? voiceState = User as IVoiceState;
@@ -73,7 +105,11 @@ public sealed class FunModule : BaseInteractionModule
 
         if (a == b && a == c)
         {
-            _ = result.Append((a == Fruits[0]) ? "Cherries, yum!!" : "Congrats, you can eat them all.");
+            _ = result.Append(
+                (a == Fruits[0]) 
+                    ? "Cherries, yum!!" 
+                    : "Congrats, you can taste them all."
+            );
         }
         else if (a == b || a == c || b == c)
         {

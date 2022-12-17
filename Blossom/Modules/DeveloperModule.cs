@@ -1,6 +1,5 @@
 ﻿namespace Blossom.Modules;
 
-[EnabledInDm(true)]
 public sealed class DeveloperModule : BaseInteractionModule
 {
     public DeveloperModule(IServiceProvider services) : base(services)

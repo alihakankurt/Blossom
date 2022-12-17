@@ -1,6 +1,5 @@
 ﻿namespace Blossom.Modules;
 
-[EnabledInDm(false)]
 public sealed class ModerationModule : BaseInteractionModule
 {
     private const string NoReasonProvided = "No reason provided";

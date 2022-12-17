@@ -1,6 +1,5 @@
 ﻿namespace Blossom.Modules;
 
-[EnabledInDm(false)]
 public sealed class InformationModule : BaseInteractionModule
 {
     private const string GreenCircle = ":green_circle:";
@@ -19,21 +18,6 @@ public sealed class InformationModule : BaseInteractionModule
         _configurationService = configurationService;
     }
 
-    [SlashCommand("commands", "Sends the command list")]
-    public async Task CommandsCommand()
-    {
-        await RespondWithEmbedAsync(
-            description: $"{Client.CurrentUser.Mention}'s Commands",
-            fields: InteractionService.Modules
-                .Select(static (module) => CreateField(
-                    $"> {module.Name}",
-                    string.Join("\n", module.SlashCommands.Select(static (command) => $"`{command.Name}`: {command.Description}"))
-                )
-            )
-                .ToArray()
-        );
-    }
-
     [SlashCommand("status", "Shows my current status")]
     public async Task StatusCommand()
     {
@@ -41,7 +25,7 @@ public sealed class InformationModule : BaseInteractionModule
         string discordNetVersion = typeof(DiscordSocketClient).Assembly.GetName().Version!.ToString(3);
         string botVersion = _configurationService.Get("Version");
 
-        string latency = $"{((Client.Latency < 100) ? GreenCircle : ((Client.Latency < 250) ? YelloCircle : RedCircle))} {Client.Latency} MS";
+        string latency = $"{((Client.Latency < 100) ? GreenCircle : (Client.Latency < 250) ? YelloCircle : RedCircle)} {Client.Latency} MS";
         Process currentProcess = Process.GetCurrentProcess();
         string ramUsage = $"{currentProcess.PrivateMemorySize64 / 1048576} MB";
         string cpuTime = $"{currentProcess.TotalProcessorTime.TotalMilliseconds} MS";
