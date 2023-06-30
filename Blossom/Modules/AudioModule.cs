@@ -1,175 +1,339 @@
-﻿namespace Blossom.Modules;
+namespace Blossom.Modules;
 
 public sealed class AudioModule : BaseInteractionModule
 {
-    private const string StreamDescription = "`🔴 LIVE `";
+    private const int TrackPerPage = 10;
+    private const int TrackTitleLimit = 70;
+    private const string NowPlayingTitle = "🎶 Now Playing";
+    private const string StreamDescription = "🔴 LIVE";
     private const string PositionBar = "─────────────────────────────";
     private const string PositionSign = "⚪";
 
-    private readonly AudioService _audioService;
+    private readonly BloomNode _bloomNode;
 
-    public AudioModule(IServiceProvider services, AudioService audioService) : base(services)
+    public AudioModule(IServiceProvider services, BloomNode bloomNode) : base(services)
     {
-        _audioService = audioService;
+        _bloomNode = bloomNode;
     }
 
-    [SlashCommand("join", "Joins the voice channel"), RequirePlayerNotJoined, RequireVoiceChannel]
+    [SlashCommand("join", "Joins the voice channel")]
+    [RequirePlayerNotJoined, RequireVoiceChannel]
     public async Task JoinCommand()
     {
-        LavaPlayer player = await _audioService.JoinAsync(((IVoiceState)User).VoiceChannel, (ITextChannel)Channel);
-        await RespondAsync($"Joined to {player.VoiceChannel.Mention}");
+        IVoiceChannel voiceChannel = VoiceState!.VoiceChannel;
+        await _bloomNode.JoinAsync(voiceChannel, Channel);
+        await RespondAsync($"Joined to {voiceChannel.Mention}");
     }
 
-    [SlashCommand("leave", "Leaves the voice channel"), RequirePlayerJoined, RequireUserInVoiceChannel]
+    [SlashCommand("leave", "Leaves the voice channel")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel]
     public async Task LeaveCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
-        IVoiceChannel voiceChannel = player.VoiceChannel;
-        await _audioService.LeaveAsync(voiceChannel);
+        IVoiceChannel voiceChannel = VoiceState!.VoiceChannel;
+        await _bloomNode.LeaveAsync(voiceChannel);
         await RespondAsync($"Leaved from {voiceChannel.Mention}");
     }
 
-    [SlashCommand("play", "Adds the track(s) with given query"), RequireUserInVoiceChannel, RequireVoiceChannel]
+    [SlashCommand("play", "Adds the track(s) with given query")]
+    [RequireUserInVoiceChannel, RequireVoiceChannel]
     public async Task PlayCommand([Summary(description: "The track's URL or name to search")] string query)
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild) ?? await _audioService.JoinAsync(((IVoiceState)User).VoiceChannel, (ITextChannel)Channel);
-
-        SearchResponse searchResponse = await _audioService.SearchAsync(query);
-        if (searchResponse.Status is SearchStatus.LoadFailed or SearchStatus.NoMatches)
+        string response = string.Empty;
+        BloomPlayer? player = _bloomNode.GetPlayer(Guild);
+        if (player is null)
         {
-            await RespondEphemeralAsync("Could't find any tracks with given `query`!");
+            player = await _bloomNode.JoinAsync(VoiceState!.VoiceChannel, Channel);
+            response = $"Joined to {player.VoiceChannel.Mention}\n";
+        }
+
+        query = query.Trim('<', '>');
+        bool isWellFormed = Uri.IsWellFormedUriString(query, UriKind.Absolute);
+        SearchResult result = await _bloomNode.SearchAsync(query, isWellFormed ? SearchKind.Direct : SearchKind.YouTube);
+        if (result.Kind is SearchResultKind.NoMatches or SearchResultKind.LoadFailed)
+        {
+            await RespondAsync($"{response}Could't find any tracks with given query!");
             return;
         }
 
-        if (searchResponse.Status is SearchStatus.PlaylistLoaded)
+        if (result.Kind is SearchResultKind.PlaylistLoaded)
         {
-            player.Vueue.Enqueue(searchResponse.Tracks);
-            await RespondAsync($"{searchResponse.Playlist.Name}` loaded with `{searchResponse.Tracks.Count}` tracks.");
+            player.Queue.AddRange(result.Tracks!);
+            await RespondAsync($"{response}Playlist `{result.Playlist!.Name}` loaded with {result.Tracks!.Count} tracks.");
         }
         else
         {
-            LavaTrack firstTrack = searchResponse.Tracks.First();
-            player.Vueue.Enqueue(firstTrack);
-            await RespondAsync($"`{firstTrack.Title.CutOff(70)}` queued.");
+            BloomTrack trackToAdd = result.Tracks![0];
+            player.Queue.Add(trackToAdd);
+            await RespondAsync($"{response}`{trackToAdd.Title.CutOff(TrackTitleLimit)}` queued.");
         }
 
-        if (player.PlayerState is PlayerState.None or PlayerState.Stopped)
+        if (player.State is PlayerState.None or PlayerState.Connected or PlayerState.Stopped)
+            await player.PlayNextAsync();
+    }
+
+    [SlashCommand("insert", "Inserts the track(s) with given query to the provided position")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue]
+    public async Task InsertCommand(
+        [Summary(description: "The track's URL or name to search")] string query,
+        [Summary(description: "The position to be inserted"), MinValue(1)] int position
+    )
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+
+        query = query.Trim('<', '>');
+        bool isWellFormed = Uri.IsWellFormedUriString(query, UriKind.Absolute);
+        SearchResult result = await _bloomNode.SearchAsync(query, isWellFormed ? SearchKind.Direct : SearchKind.YouTube);
+        if (result.Kind is SearchResultKind.NoMatches or SearchResultKind.LoadFailed)
         {
-            _ = player.Vueue.TryDequeue(out LavaTrack? track);
-            await player.PlayAsync(track);
+            await RespondAsync("Could't find any tracks with given query!");
+            return;
+        }
+
+        position = Math.Min(position - 1, player.Queue.Count);
+        if (result.Kind is SearchResultKind.PlaylistLoaded)
+        {
+            foreach (BloomTrack trackToInsert in result.Tracks!.Reverse())
+            {
+                player.Queue.InsertAt(trackToInsert, position);
+            }
+            await RespondAsync($"Playlist `{result.Playlist!.Name}` loaded with {result.Tracks!.Count} tracks.");
+        }
+        else
+        {
+            BloomTrack trackToInsert = result.Tracks![0];
+            player.Queue.InsertAt(trackToInsert, position);
+            await RespondAsync($"`{trackToInsert.Author} - {trackToInsert.Title.CutOff(TrackTitleLimit)}` queued.");
         }
     }
 
-    [SlashCommand("stop", "Stops the player and clears the queue"), RequirePlayerJoined, RequireUserInVoiceChannel]
+    [SlashCommand("remove", "Removes a track from the queue")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue]
+    public async Task RemoveCommand([Summary(description: "The position of track"), MinValue(1), AutoComplete<RemoveTrackAutocompleteHandler>()] int position)
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        if (position-- > player.Queue.Count)
+        {
+            await RespondAsync($"The provided positon must be lesser than or equal to queue's track count ({player.Queue.Count})!");
+            return;
+        }
+
+        if (position == player.Queue.Current)
+        {
+            await RespondAsync("You can't remove the track that currently playing!");
+            return;
+        }
+
+        BloomTrack removedTrack = player.Queue.RemoveAt(position);
+        await RespondAsync($"`{removedTrack.Title.CutOff(TrackTitleLimit)}` removed from the queue.");
+    }
+
+    [SlashCommand("stop", "Stops the player and clears the queue")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue]
     public async Task StopCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
-        await _audioService.StopAsync(player);
-        await RespondAsync("Player stopped.");
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        await player.StopAsync();
+        player.Queue.Clear();
+        await RespondAsync("Player stopped and queue cleared.");
     }
 
-    [SlashCommand("pause", "Pauses the player"), RequirePlayerJoined, RequireUserInVoiceChannel, EnsureVoiceState(PlayerState.Playing)]
+    [SlashCommand("pause", "Pauses the player")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, EnsurePlayerState(PlayerState.Playing)]
     public async Task PauseCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
         await player.PauseAsync();
         await RespondAsync("Player paused.");
     }
 
-    [SlashCommand("resume", "Resumes the player"), RequirePlayerJoined, RequireUserInVoiceChannel, EnsureVoiceState(PlayerState.Paused)]
+    [SlashCommand("resume", "Resumes the player")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, EnsurePlayerState(PlayerState.Paused)]
     public async Task ResumeCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
         await player.ResumeAsync();
         await RespondAsync("Player resumed.");
     }
 
-    [SlashCommand("volume", "Sets the player's volume"), RequirePlayerJoined, RequireUserInVoiceChannel]
-    public async Task VolumeCommand([Summary(description: "The volume value"), MinValue(0), MaxValue(120)] ushort volume)
+    [SlashCommand("volume", "Sets the player's volume")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel]
+    public async Task VolumeCommand([Summary(description: "The volume value"), MinValue(0), MaxValue(200)] ushort volume)
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
         await player.SetVolumeAsync(volume);
         await RespondAsync($"Volume setted to `{volume}`.");
     }
 
-    [SlashCommand("seek", "Seeks the current track to given timespan (mm:ss)"), RequirePlayerJoined, RequireUserInVoiceChannel, EnsureVoiceState(PlayerState.Playing)]
-    public async Task SeekAsync([Summary(description: "The timespan to seek")] TimeSpan timespan)
+    [SlashCommand("seek", "Seeks the current track to given position (mm:ss)")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, EnsurePlayerState(PlayerState.Playing)]
+    public async Task SeekAsync([Summary(description: "The position to seek")] TimeSpan position)
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
 
-        if (player.Track.Duration.CompareTo(timespan) < 1)
+        if (player.Track!.Duration.CompareTo(position) < 1)
         {
-            await RespondAsync("The `timespan` can't exceed the current track's duration!");
+            await RespondAsync("The `position` can't exceed the current track's duration!");
             return;
         }
 
-        await player.SeekAsync(timespan);
-        await RespondAsync($"Seeked to `{timespan:mm':'ss}`.");
+        await player.SeekAsync(position);
+        await RespondAsync($"Seeked to `{position:mm':'ss}`.");
     }
 
-    // FIXME: The `filter` command breaks the playback that
-    // The newer version of Victoria may cause that
-    [SlashCommand("filter", "Applies a filter to audio"), RequirePlayerJoined, RequireUserInVoiceChannel]
-    public async Task FilterCommand([Summary(description: "The name of the filter"), Autocomplete(typeof(FilterAutocompleteHandler))] string filter)
+
+    [SlashCommand("loop", "Changes the loop mode of the player")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel]
+    public async Task LoopCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
-        await _audioService.ApplyFilterAsync(player, filter);
-        await RespondAsync("Filter applied.");
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        player.Queue.Loop();
+        await RespondAsync($"Loop mode set to: `{player.Queue.LoopMode}`");
     }
 
-    [SlashCommand("skip", "Stops the current track and plays next one if exists"), RequirePlayerJoined, RequireUserInVoiceChannel]
-    public async Task SkipCommand()
+    [SlashCommand("next", "Stops the current track and plays next one if exists")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue, EnsureNotLoopMode(LoopMode.One)]
+    public async Task NextCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
-        await _audioService.SkipAsync(player);
-        await RespondAsync("Skipped.");
-    }
-
-    [SlashCommand("remove", "Removes the track in the given position from queue"), RequirePlayerJoined, RequireUserInVoiceChannel]
-    public async Task RemoveCommand([Summary(description: "The position of track that will be removed"), MinValue(1), Autocomplete(typeof(RemoveTrackAutocompleteHandler))] int position)
-    {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
-        if (position > player.Vueue.Count)
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        string response = "There must be some bug!";
+        if (player.State is PlayerState.Playing or PlayerState.Paused)
         {
-            await RespondAsync($"The `positon` must be lesser than `{player.Vueue.Count}`!");
+            await player.StopAsync();
+            response = "Player stopped.\n";
+        }
+
+        if (player.Queue.HasNext)
+        {
+            await player.PlayNextAsync();
+            response = "Playing next track.";
+        }
+
+        await RespondAsync(response);
+    }
+
+    [SlashCommand("previous", "Stops the current track and plays previous one if exists")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue, EnsureNotLoopMode(LoopMode.One)]
+    public async Task PreviousCommand()
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        string response = "There must be some bug!";
+        if (player.State is PlayerState.Playing or PlayerState.Paused)
+        {
+            await player.StopAsync();
+            response = "Player stopped.";
+        }
+
+        if (player.Queue.HasPrevious)
+        {
+            await player.PlayPreviousAsync();
+            response = "Playing previous track.";
+        }
+
+        await RespondAsync(response);
+    }
+
+    [SlashCommand("rewind", "Plays the current track from start")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue]
+    public async Task RewindCommand()
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        if (player.State is PlayerState.Playing)
+            await player.SeekAsync(TimeSpan.Zero);
+        else
+            await player.PlayCurrentAsync();
+
+        await RespondAsync("Rewinded current track.");
+    }
+
+    [SlashCommand("filter", "Applies a filter preset to playback")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel]
+    public async Task FilterCommand([Summary(description: "The name of the preset"), AutoComplete<FilterAutoCompleteHandler>()] string name)
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        FilterPreset? preset = AudioService.GetFilterPreset(name);
+        if (preset is null)
+        {
+            await RespondAsync("Preset couldn't found with provided name!");
             return;
         }
 
-        LavaTrack removedTrack = player.Vueue.RemoveAt(position - 1);
-        await RespondAsync($"`{removedTrack.Title.CutOff(70)}` dequeued.");
+        await player.ApplyFiltersAsync(preset.Filters, preset.Volume, preset.Bands);
+        await RespondAsync($"{preset.Name} applied.");
     }
 
-    [SlashCommand("queue", "Shows to queue up to 16 tracks"), RequirePlayerJoined]
-    public async Task QueueCommand()
+    [SlashCommand("shuffle", "Shuffles the queue")]
+    [RequirePlayerJoined, RequireUserInVoiceChannel, RequireNonEmptyQueue]
+    public async Task ShuffleCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        player.Queue.Shuffle();
+        await RespondAsync("Queue shuffled.");
+    }
+
+    [SlashCommand("queue", "Show the queue")]
+    [RequirePlayerJoined, RequireNonEmptyQueue]
+    public async Task QueueCommand([Summary(description: "The page number of the queue (zero-indexed)")] int? page = null)
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        page ??= player.Queue.Current / TrackPerPage;
+        int startIndex = page.Value * TrackPerPage;
+        BloomTrack[] tracks = player.Queue.Take(startIndex..(startIndex + TrackPerPage)).Where((track) => track is not null).ToArray();
         await RespondWithEmbedAsync(
-            title: $"Track Queue - {player.Vueue.Count} tracks",
-            description: string.Join('\n', player.Vueue.Take(16)
-                    .Select(static (track) => $"[{track.Title} - {track.Author}]({track.Url})"))
+            title: $"-- Queue --",
+            description: string.Join('\n', tracks
+                    .Select((track, index) =>
+                        $"{startIndex + index + 1}) [{track.Title}]({track.Url}){((startIndex + index == player.Queue.Current) ? " (Now Playing)" : string.Empty)}"
+                    )
+                ),
+            footer: CreateFooter($"Page {page}")
         );
     }
 
-    [SlashCommand("nowplaying", "Shows the currently playing track's information"), RequirePlayerJoined]
+    [SlashCommand("nowplaying", "Shows the currently playing track's information")]
+    [RequirePlayerJoined, EnsurePlayerState(PlayerState.Playing)]
     public async Task NowPlayingCommand()
     {
-        LavaPlayer player = _audioService.GetPlayer(Guild)!;
-        if (player.Track is null)
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+
+        string description = $"[{player.Track!.Title}]({player.Track.Url})\n";
+        if (player.Track.IsStream)
         {
-            await RespondEphemeralAsync("Nothing is playing right now!");
+            await RespondWithEmbedAsync(
+                title: NowPlayingTitle,
+                description: $"{description}```\n{StreamDescription}```"
+            );
             return;
         }
 
-        string description = $"[{player.Track.Title} - {player.Track.Author}]({player.Track.Url})\n"
-            + $"```\n{(player.Track.IsStream ? StreamDescription : PositionBar.Insert((int)(player.Track.Position.TotalSeconds / player.Track.Duration.TotalSeconds * 30), PositionSign))}\n\n"
-            + $"[ {player.Track.Position:hh\\:mm\\:ss} / {player.Track.Duration:hh\\:mm\\:ss} ]```";
+        await RespondWithEmbedAsync(
+            title: NowPlayingTitle,
+            description: description +
+                $"```\n{PositionBar.Insert((int)(player.Track.Position.TotalSeconds / player.Track.Duration.TotalSeconds * 30), PositionSign)}\n\n"
+              + $"[ {player.Track.Position:hh\\:mm\\:ss} / {player.Track.Duration:hh\\:mm\\:ss} ]```"
+        );
+    }
 
-        string artwork = await player.Track.FetchArtworkAsync();
+    [SlashCommand("lyrics", "Shows the lyrics for current track")]
+    [RequirePlayerJoined]
+    public async Task LyricsCommand()
+    {
+        BloomPlayer player = _bloomNode.GetPlayer(Guild)!;
+        if (player.Track is null || player.State is not PlayerState.Playing or PlayerState.Paused)
+        {
+            await RespondAsync("Nothing is playing right now!");
+            return;
+        }
+
+        string? lyrics = await player.Track.GetLyricsAsync();
+        if (lyrics is null)
+        {
+            await RespondAsync("Couldn't find lyrics for this song!");
+            return;
+        }
 
         await RespondWithEmbedAsync(
-            title: "🎶 Now Playing",
-            description: description,
-            thumbnail: artwork
+            title: $"Lyrics for {player.Track.Title.CutOff(TrackTitleLimit)}",
+            description: lyrics
         );
     }
 }

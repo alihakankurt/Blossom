@@ -7,7 +7,7 @@ public sealed class RequirePlayerNotJoinedAttribute : PreconditionAttribute
     public override Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services)
     {
         return Task.FromResult(
-            services.GetRequiredService<AudioService>().IsJoined(context.Guild)
+            services.GetRequiredService<BloomNode>().HasPlayer(context.Guild)
                 ? PreconditionResult.FromError(AlreadyJoinedMessage)
                 : PreconditionResult.FromSuccess()
         );

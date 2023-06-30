@@ -2,14 +2,9 @@
 
 public sealed class FunModule : BaseInteractionModule
 {
-    private const string UwuUrl = "https://www.youtube.com/watch?v=PqIMNE7QBSQ";
-
     private static readonly string[] CoinSides;
     private static readonly string[] UwuFaces;
     private static readonly string[] Fruits;
-
-    private readonly AudioService _audioService;
-    private LavaTrack? _uwuTrack;
 
     static FunModule()
     {
@@ -18,15 +13,14 @@ public sealed class FunModule : BaseInteractionModule
         Fruits = new[] { ":cherries:", ":tangerine:", ":watermelon:", ":lemon:", ":peach:", ":grapes:", ":pineapple:", ":blueberries:" };
     }
 
-    public FunModule(IServiceProvider services, AudioService audioService) : base(services)
+    public FunModule(IServiceProvider services) : base(services)
     {
-        _audioService = audioService;
     }
 
     [SlashCommand("hi", "hi")]
     public async Task HiCommand()
     {
-        await RespondAsync($"Hi, `{User.Username}`. How are you?");
+        await RespondAsync($"Hi, `{User.GlobalName}`. How are you?");
     }
 
     [SlashCommand("flip", "Flips a coin")]
@@ -74,24 +68,25 @@ public sealed class FunModule : BaseInteractionModule
         await RespondAsync(message);
     }
 
-    [SlashCommand("uwu", "uwu")]
-    public async Task UwuCommand()
+    [SlashCommand("uwuify", "Sends your message back in a cute way.")]
+    public async Task UwuCommand([Summary(description: "The text to uwuify >.<"), MaxValue(512)] string text)
     {
-        if (Channel is not IDMChannel && Extensions.Random(0, 101) < 4)
+        var result = new StringBuilder();
+        for (int i = 0; i < text.Length; i++)
         {
-            LavaPlayer? player = _audioService.GetPlayer(Guild);
-            IVoiceState? voiceState = User as IVoiceState;
-            if (player is null && voiceState?.VoiceChannel is not null)
-            {
-                player = await _audioService.JoinAsync(voiceState.VoiceChannel, (ITextChannel)Channel);
-                _uwuTrack ??= (await _audioService.SearchAsync(UwuUrl)).Tracks.First();
-                await player.PlayAsync(_uwuTrack);
-                await Task.Delay(3000);
-                await _audioService.LeaveAsync(voiceState.VoiceChannel);
-            }
+            if (text[i] is 'L' or 'R')
+                result.Append('W');
+            else if (text[i] is 'l' or 'r')
+                result.Append('w');
+            else if (text[i] is 'o' or 'O' && i > 0 && text[i - 1] is 'N' or 'M' or 'n' or 'm')
+                result.Append(text[i] is 'o' ? "yo" : "YO");
+            else
+                result.Append(text[i]);
         }
 
-        await RespondAsync(UwuFaces.Choose());
+        result.Append(' ');
+        result.Append(UwuFaces.Choose());
+        await RespondAsync(result.ToString());
     }
 
     [SlashCommand("slot", "Runs slot machine")]
@@ -104,22 +99,26 @@ public sealed class FunModule : BaseInteractionModule
         StringBuilder result = new($"[ {a} {b} {c} ] ");
 
         if (a == b && a == c)
-        {
-            _ = result.Append(
-                (a == Fruits[0]) 
-                    ? "Cherries, yum!!" 
-                    : "Congrats, you can taste them all."
-            );
-        }
+            result.Append((a == Fruits[0]) ? "Cherries, yum!!" : "Congrats, you can taste them all.");
         else if (a == b || a == c || b == c)
-        {
-            _ = result.Append("Congrats, two of them matches.");
-        }
+            result.Append("Congrats, two of them matches.");
         else
-        {
-            _ = result.Append("Sorry, no matches.");
-        }
+            result.Append("Sorry, no matches.");
 
         await RespondAsync(result.ToString());
+    }
+
+    [SlashCommand("joke", "Makes a joke")]
+    public async Task JokeCommand()
+    {
+        var joke = await SomeRandomApi.GetJokeAsync();
+        await RespondAsync(joke);
+    }
+
+    [SlashCommand("quote", "Says a quote from animes")]
+    public async Task QuoteCommand()
+    {
+        var quote = await SomeRandomApi.GetQuoteAsync();
+        await RespondAsync(quote);
     }
 }

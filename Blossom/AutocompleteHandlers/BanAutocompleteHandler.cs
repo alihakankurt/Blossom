@@ -1,6 +1,6 @@
-﻿namespace Blossom.AutocompleteHandlers;
+﻿﻿namespace Blossom.AutoCompleteHandlers;
 
-public sealed class BanAutocompleteHandler : AutocompleteHandler
+public sealed class BanAutoCompleteHandler : AutocompleteHandler
 {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services)
     {

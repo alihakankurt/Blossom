@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,18 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.NET" Version="3.8.1" />
+    <PackageReference Include="Discord.Net" Version="3.11.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="Victoria" Version="6.0.1026" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="blossom.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-    <None Update="config.cfg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <ProjectReference Include="..\Bloom\Bloom.csproj" />
   </ItemGroup>
 
 </Project>

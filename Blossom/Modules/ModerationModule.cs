@@ -41,7 +41,7 @@ public sealed class ModerationModule : BaseInteractionModule
     }
 
     [SlashCommand("unban", "Removes ban from a banned user for this guild"), RequireUserPermission(GuildPermission.BanMembers)]
-    public async Task UnbanCommand([Summary(description: "The user id to remove ban for guild"), Autocomplete(typeof(BanAutocompleteHandler))] ulong target, [Summary(description: "The reason of the action")] string? reason = default)
+    public async Task UnbanCommand([Summary(description: "The user id to remove ban for guild"), AutoComplete<BanAutoCompleteHandler>()] ulong target, [Summary(description: "The reason of the action")] string? reason = default)
     {
         RestBan ban = await Guild.GetBanAsync(target);
 

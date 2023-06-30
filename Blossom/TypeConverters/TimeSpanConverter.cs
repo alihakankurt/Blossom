@@ -8,11 +8,13 @@ public sealed class TimeSpanConverter : TypeConverter<TimeSpan>
     {
         Match match = Regex.Match(option.Value.ToString()!, TimeSpanRegex);
         if (!match.Success)
-        {
             return Task.FromResult(TypeConverterResult.FromError(InteractionCommandError.ConvertFailed, reason: default));
-        }
 
-        TimeSpan position = TimeSpan.FromSeconds(match.Groups[2].Success ? (int.Parse(match.Groups[1].Value) * 60) + int.Parse(match.Groups[2].Value) : int.Parse(match.Groups[1].Value));
+        TimeSpan position = TimeSpan.FromSeconds(
+            match.Groups[2].Success
+                ? (int.Parse(match.Groups[1].Value) * 60) + int.Parse(match.Groups[2].Value)
+                : int.Parse(match.Groups[1].Value)
+        );
         return Task.FromResult(TypeConverterResult.FromSuccess(position));
     }
 

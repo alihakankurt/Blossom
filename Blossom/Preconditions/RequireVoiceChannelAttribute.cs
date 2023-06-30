@@ -1,4 +1,4 @@
-﻿namespace Blossom.Preconditions;
+namespace Blossom.Preconditions;
 
 public sealed class RequireVoiceChannelAttribute : PreconditionAttribute
 {

@@ -2,11 +2,31 @@ namespace Blossom;
 
 public static class Extensions
 {
+    private static readonly HttpClient Client;
     private static readonly Random Randomizer;
 
     static Extensions()
     {
+        Client = new HttpClient();
         Randomizer = new Random();
+    }
+
+    public static async ValueTask<string?> SendAsync(this HttpRequestMessage self, string? authorization = null)
+    {
+        if (!string.IsNullOrEmpty(authorization))
+            Client.DefaultRequestHeaders.Add("Authorization", authorization);
+
+        using HttpResponseMessage responseMessage = await Client.SendAsync(self);
+        if (!responseMessage.IsSuccessStatusCode)
+            return null;
+
+        string response = await responseMessage.Content.ReadAsStringAsync();
+        return response;
+    }
+
+    public static ValueTask<string?> GetLyricsAsync(this BloomTrack self)
+    {
+        return SomeRandomApi.GetLyricsAsync(self.Title.Split('(')[0].Split('[')[0]);
     }
 
     public static string CutOff(this string self, int maxLength)

@@ -1,0 +1,17 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Net.Http;
+global using System.Net.WebSockets;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using System.Text;
+global using System.Text.Json;
+global using System.Text.Json.Nodes;
+global using System.Text.Json.Serialization;
+global using Bloom.Enums;
+global using Bloom.Events;
+global using Bloom.Filters;
+global using Bloom.Payloads;
+global using Discord;
+global using Discord.WebSocket;

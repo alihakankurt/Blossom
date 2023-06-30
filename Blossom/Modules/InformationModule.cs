@@ -11,11 +11,23 @@ public sealed class InformationModule : BaseInteractionModule
     private const string NoAFKChannel = "No AFK Channel";
     private const string NoActivity = "Idling";
 
-    private readonly ConfigurationService _configurationService;
-
-    public InformationModule(IServiceProvider services, ConfigurationService configurationService) : base(services)
+    public InformationModule(IServiceProvider services) : base(services)
     {
-        _configurationService = configurationService;
+    }
+
+    [SlashCommand("commands", "Shows the command list")]
+    public async Task CommandsCommand()
+    {
+        await RespondWithEmbedAsync(
+            description: $"{Client.CurrentUser.Mention}'s Commands",
+            fields: InteractionService.Modules
+                .Select(static (module) => CreateField(
+                    $"> {module.Name}",
+                    string.Join("\n", module.SlashCommands.Select(static (command) => $"`{command.Name}`: {command.Description}"))
+                )
+            )
+                .ToArray()
+        );
     }
 
     [SlashCommand("status", "Shows my current status")]
@@ -23,7 +35,7 @@ public sealed class InformationModule : BaseInteractionModule
     {
         string dotNetVersion = Environment.Version.ToString(3);
         string discordNetVersion = typeof(DiscordSocketClient).Assembly.GetName().Version!.ToString(3);
-        string botVersion = _configurationService.Get("Version");
+        string botVersion = ConfigurationService.Get("Version");
 
         string latency = $"{((Client.Latency < 100) ? GreenCircle : (Client.Latency < 250) ? YelloCircle : RedCircle)} {Client.Latency} MS";
         Process currentProcess = Process.GetCurrentProcess();
@@ -97,7 +109,8 @@ public sealed class InformationModule : BaseInteractionModule
             fields: new[]
             {
                 CreateField("Id", user.Id),
-                CreateField("User", user),
+                CreateField("Username", user.Username),
+                CreateField("Display Name", user.GlobalName),
                 CreateField("Is Bot?", user.IsBot),
                 CreateField("Status", user.Status),
                 CreateField("Activities", activities),

@@ -1,4 +1,4 @@
-﻿namespace Blossom.Modules;
+namespace Blossom.Modules;
 
 public abstract class BaseInteractionModule : InteractionModuleBase<SocketInteractionContext>
 {
@@ -11,6 +11,7 @@ public abstract class BaseInteractionModule : InteractionModuleBase<SocketIntera
     protected SocketGuild Guild => Context.Guild;
     protected SocketInteraction Interaction => Context.Interaction;
     protected SocketUser User => Context.User;
+    protected IVoiceState? VoiceState => User as IVoiceState;
 
     static BaseInteractionModule()
     {
