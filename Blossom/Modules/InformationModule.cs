@@ -1,4 +1,15 @@
-﻿namespace Blossom.Modules;
+﻿using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Blossom.Services;
+using Blossom.Utilities;
+using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Blossom.Modules;
 
 public sealed class InformationModule : BaseInteractionModule
 {
@@ -18,16 +29,18 @@ public sealed class InformationModule : BaseInteractionModule
     [SlashCommand("commands", "Shows the command list")]
     public async Task CommandsCommand()
     {
-        await RespondWithEmbedAsync(
+        Embed embed = EmbedUtility.CreateEmbed(
             description: $"{Client.CurrentUser.Mention}'s Commands",
-            fields: InteractionService.Modules
-                .Select(static (module) => CreateField(
+            color: Cherry,
+            fields: [..InteractionService.Modules
+                .Select(static (module) => EmbedUtility.CreateField(
                     $"> {module.Name}",
-                    string.Join("\n", module.SlashCommands.Select(static (command) => $"`{command.Name}`: {command.Description}"))
+                    string.Join('\n', module.SlashCommands.Select(static (command) => $"`{command.Name}`: {command.Description}"))
                 )
-            )
-                .ToArray()
+            )]
         );
+
+        await RespondAsync(embed: embed);
     }
 
     [SlashCommand("status", "Shows my current status")]
@@ -35,25 +48,30 @@ public sealed class InformationModule : BaseInteractionModule
     {
         string dotNetVersion = Environment.Version.ToString(3);
         string discordNetVersion = typeof(DiscordSocketClient).Assembly.GetName().Version!.ToString(3);
-        string botVersion = ConfigurationService.Get("Version");
+
+        ConfigurationService configuration = Services.GetRequiredService<ConfigurationService>();
+        string botVersion = configuration.Get("Version");
 
         string latency = $"{((Client.Latency < 100) ? GreenCircle : (Client.Latency < 250) ? YelloCircle : RedCircle)} {Client.Latency} MS";
         Process currentProcess = Process.GetCurrentProcess();
         string ramUsage = $"{currentProcess.PrivateMemorySize64 / 1048576} MB";
         string cpuTime = $"{currentProcess.TotalProcessorTime.TotalMilliseconds} MS";
 
-        await RespondWithEmbedAsync(
+        Embed embed = EmbedUtility.CreateEmbed(
             description: "Current Status",
-            fields: new[]
-            {
-                CreateField(".NET Version", dotNetVersion),
-                CreateField("Discord.NET Version", discordNetVersion),
-                CreateField("Bot Version", botVersion),
-                CreateField("Latency", latency),
-                CreateField("RAM Usage", ramUsage),
-                CreateField("CPU Time", cpuTime),
-            }
+            color: Cherry,
+            fields:
+            [
+                EmbedUtility.CreateField(".NET Version", dotNetVersion),
+                EmbedUtility.CreateField("Discord.NET Version", discordNetVersion),
+                EmbedUtility.CreateField("Bot Version", botVersion),
+                EmbedUtility.CreateField("Latency", latency),
+                EmbedUtility.CreateField("RAM Usage", ramUsage),
+                EmbedUtility.CreateField("CPU Time", cpuTime),
+            ]
         );
+
+        await RespondAsync(embed: embed);
     }
 
     [SlashCommand("guild", "Shows current guild's information")]
@@ -70,26 +88,29 @@ public sealed class InformationModule : BaseInteractionModule
         int dndMembers = Guild.Users.Count(static (user) => user.Status is UserStatus.DoNotDisturb);
         int offlineMembers = Guild.Users.Count(static (user) => user.Status is UserStatus.Offline);
 
-        await RespondWithEmbedAsync(
+        Embed embed = EmbedUtility.CreateEmbed(
             title: "Guild Information",
             description: Guild.Description,
             thumbnail: Guild.BannerUrl,
-            author: CreateAuthor(Guild.Name, Guild.IconUrl),
-            fields: new[]
-            {
-                CreateField("Id", Guild.Id),
-                CreateField("Owner", Guild.Owner.Mention),
-                CreateField("Created At", Guild.CreatedAt),
-                CreateField("Channels", $"📁 {categoryChannels}\n💬 {textChannels}\n🔊 {voiceChannels}\n🎙️ {stageChannels}\n🧵 {threadChannels}"),
-                CreateField("Members", $"{GreenCircle} {onlineMembers}\n{YelloCircle} {idleMembers}\n{RedCircle} {dndMembers}\n{BlackCircle} {offlineMembers}"),
-                CreateField("Emotes", Guild.Emotes.Count),
-                CreateField("System Channel", Guild.SystemChannel?.Mention ?? NoSystemChannel),
-                CreateField("Rules Channel", Guild.RulesChannel?.Mention ?? NoRulesChannel),
-                CreateField("AFK Channel", Guild.AFKChannel?.Mention ?? NoAFKChannel),
-                CreateField("AFK Timeout", Guild.AFKTimeout),
-                CreateField("Premium Tier", Guild.PremiumTier),
-            }
+            color: Cherry,
+            author: EmbedUtility.CreateAuthor(Guild.Name, Guild.IconUrl),
+            fields:
+            [
+                EmbedUtility.CreateField("Id", Guild.Id),
+                EmbedUtility.CreateField("Owner", Guild.Owner.Mention),
+                EmbedUtility.CreateField("Created At", Guild.CreatedAt),
+                EmbedUtility.CreateField("Channels", $"📁 {categoryChannels}\n💬 {textChannels}\n🔊 {voiceChannels}\n🎙️ {stageChannels}\n🧵 {threadChannels}"),
+                EmbedUtility.CreateField("Members", $"{GreenCircle} {onlineMembers}\n{YelloCircle} {idleMembers}\n{RedCircle} {dndMembers}\n{BlackCircle} {offlineMembers}"),
+                EmbedUtility.CreateField("Emotes", Guild.Emotes.Count),
+                EmbedUtility.CreateField("System Channel", Guild.SystemChannel?.Mention ?? NoSystemChannel),
+                EmbedUtility.CreateField("Rules Channel", Guild.RulesChannel?.Mention ?? NoRulesChannel),
+                EmbedUtility.CreateField("AFK Channel", Guild.AFKChannel?.Mention ?? NoAFKChannel),
+                EmbedUtility.CreateField("AFK Timeout", Guild.AFKTimeout),
+                EmbedUtility.CreateField("Premium Tier", Guild.PremiumTier),
+            ]
         );
+
+        await RespondAsync(embed: embed);
     }
 
     [SlashCommand("user", "Shows a user's information")]
@@ -97,28 +118,31 @@ public sealed class InformationModule : BaseInteractionModule
     {
         user ??= (SocketGuildUser)User;
 
-        string activities = (user.Activities.Count is 0)
-            ? NoActivity
-            : string.Join('\n', user.Activities.Select(static (activity) => $"`{activity.Type} {activity.Name}` {activity.Details}"));
+        string activities = NoActivity;
+        if (user.Activities.Count > 0)
+            activities = string.Join('\n', user.Activities.Select(static (activity) => $"`{activity.Type} {activity.Name}` {activity.Details}"));
 
-        SocketRole topRole = user.GetTopRole();
+        SocketRole topRole = user.Roles.MaxBy(static (role) => role.Position)!;
 
-        await RespondWithEmbedAsync(
+        Embed embed = EmbedUtility.CreateEmbed(
             title: "User Information",
-            author: CreateAuthor(user.DisplayName, user.GetAvatarUrl()),
-            fields: new[]
-            {
-                CreateField("Id", user.Id),
-                CreateField("Username", user.Username),
-                CreateField("Display Name", user.GlobalName),
-                CreateField("Is Bot?", user.IsBot),
-                CreateField("Status", user.Status),
-                CreateField("Activities", activities),
-                CreateField("Top Role", topRole.Mention),
-                CreateField("Created At", user.CreatedAt),
-                CreateField("Joined At", user.JoinedAt)
-            }
+            author: EmbedUtility.CreateAuthor(user.DisplayName, user.GetAvatarUrl()),
+            color: Cherry,
+            fields:
+            [
+                EmbedUtility.CreateField("Id", user.Id),
+                EmbedUtility.CreateField("Username", user.Username),
+                EmbedUtility.CreateField("Display Name", user.GlobalName),
+                EmbedUtility.CreateField("Is Bot?", user.IsBot),
+                EmbedUtility.CreateField("Status", user.Status),
+                EmbedUtility.CreateField("Activities", activities),
+                EmbedUtility.CreateField("Top Role", topRole.Mention),
+                EmbedUtility.CreateField("Created At", user.CreatedAt),
+                EmbedUtility.CreateField("Joined At", user.JoinedAt)
+            ]
         );
+
+        await RespondAsync(embed: embed);
     }
 
     [SlashCommand("spotify", "Shows a user's spotify status")]
@@ -128,14 +152,17 @@ public sealed class InformationModule : BaseInteractionModule
 
         if (user.Activities.FirstOrDefault(static (activity) => activity is SpotifyGame) is not SpotifyGame spotify)
         {
-            await RespondEphemeralAsync("This user isn't listening Spotify now!");
+            await RespondAsync("This user isn't listening Spotify now!", ephemeral: true);
             return;
         }
 
-        await RespondWithEmbedAsync(
+        Embed embed = EmbedUtility.CreateEmbed(
             title: "Listening Spotify",
             description: $"{user.Mention} is listening [{spotify.TrackTitle}]({spotify.TrackUrl}) from {spotify.AlbumTitle}\n```[ {spotify.Elapsed!.Value:mm':'ss} / {spotify.Duration!.Value:mm':'ss}]```",
-            thumbnail: spotify.AlbumArtUrl
+            thumbnail: spotify.AlbumArtUrl,
+            color: Cherry
         );
+
+        await RespondAsync(embed: embed);
     }
 }

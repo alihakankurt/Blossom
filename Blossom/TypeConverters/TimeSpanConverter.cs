@@ -1,25 +1,43 @@
+using System;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Discord;
+using Discord.Interactions;
+
 namespace Blossom.TypeConverters;
 
-public sealed class TimeSpanConverter : TypeConverter<TimeSpan>
+public sealed partial class TimeSpanTypeConverter : TypeConverter<TimeSpan>
 {
-    private const string TimeSpanRegex = "^([0-9]{1,2})[:.]?([0-9]{1,2})?$";
-
     public override Task<TypeConverterResult> ReadAsync(IInteractionContext context, IApplicationCommandInteractionDataOption option, IServiceProvider services)
     {
-        Match match = Regex.Match(option.Value.ToString()!, TimeSpanRegex);
+        Match match = GetTimeSpanRegex().Match(option.Value.ToString()!);
         if (!match.Success)
-            return Task.FromResult(TypeConverterResult.FromError(InteractionCommandError.ConvertFailed, reason: default));
+            return Task.FromResult(TypeConverterResult.FromError(InteractionCommandError.ConvertFailed, "Invalid time span format."));
 
-        TimeSpan position = TimeSpan.FromSeconds(
-            match.Groups[2].Success
-                ? (int.Parse(match.Groups[1].Value) * 60) + int.Parse(match.Groups[2].Value)
-                : int.Parse(match.Groups[1].Value)
-        );
-        return Task.FromResult(TypeConverterResult.FromSuccess(position));
+        int minutes = 0;
+        int seconds = int.Parse(match.Groups[1].Value);
+
+        if (match.Groups[2].Success)
+        {
+            minutes = seconds;
+            seconds = int.Parse(match.Groups[2].Value);
+        }
+
+        if (seconds > 59)
+            return Task.FromResult(TypeConverterResult.FromError(InteractionCommandError.ConvertFailed, "Seconds must be less than 60."));
+
+        if (minutes > 59)
+            return Task.FromResult(TypeConverterResult.FromError(InteractionCommandError.ConvertFailed, "Minutes must be less than 60."));
+
+        TimeSpan value = TimeSpan.FromSeconds(seconds) + TimeSpan.FromMinutes(minutes);
+        return Task.FromResult(TypeConverterResult.FromSuccess(value));
     }
 
     public override ApplicationCommandOptionType GetDiscordType()
     {
         return ApplicationCommandOptionType.String;
     }
+
+    [GeneratedRegex("^([0-9]{1,2})[:.]?([0-9]{1,2})?$")]
+    private static partial Regex GetTimeSpanRegex();
 }

@@ -1,19 +1,17 @@
 namespace Bloom.Filters;
 
 /// <summary>
-/// Similar to tremolo. While tremolo oscillates the volume, vibrato oscillates the pitch.
+/// Uses amplification to create a warbling effect, where the pitch quickly oscillates.
 /// </summary>
-public readonly struct VibratoFilter : IFilter
+public sealed class VibratoFilter : IFilter
 {
     /// <summary>
-    /// The frequency (0.0 ≤).
+    /// The frequency.
     /// </summary>
-    [JsonPropertyName("frequency")]
     public float Frequency { get; init; }
 
     /// <summary>
-    /// The depth (0.0 ≤).
+    /// The depth.
     /// </summary>
-    [JsonPropertyName("depth")]
     public float Depth { get; init; }
 }

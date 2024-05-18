@@ -1,39 +1,58 @@
+using System;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Blossom.Services;
 
-public static class SomeRandomApi
+public sealed class SomeRandomApi : IService
 {
-    private const string Endpoint = "https://some-random-api.com";
+    private const string EndPoint = "https://some-random-api.com/";
 
-    public static async ValueTask<string?> GetLyricsAsync(string title)
+    private readonly HttpClient _httpClient;
+
+    public SomeRandomApi(HttpClient httpClient)
     {
-        using HttpRequestMessage requestMessage = new(HttpMethod.Get, $"{Endpoint}/others/lyrics?title={title}");
-        string? response = await requestMessage.SendAsync();
-        if (response is null)
-            return null;
-
-        JsonObject data = JsonNode.Parse(response)!.AsObject();
-        return data["lyrics"]!.ToString();
+        _httpClient = httpClient;
+        _httpClient.BaseAddress = new Uri(EndPoint);
     }
 
-    public static async ValueTask<string?> GetJokeAsync()
+    public ValueTask InitializeAsync(CancellationToken cancellationToken = default)
     {
-        using HttpRequestMessage requestMessage = new(HttpMethod.Get, $"{Endpoint}/others/joke");
-        string? response = await requestMessage.SendAsync();
-        if (response is null)
-            return null;
-
-        JsonObject data = JsonNode.Parse(response)!.AsObject();
-        return data["joke"]!.ToString();
+        return ValueTask.CompletedTask;
     }
 
-    public static async ValueTask<string?> GetQuoteAsync()
+    public async ValueTask<LyricsResult?> GetLyricsAsync(string title)
     {
-        using HttpRequestMessage requestMessage = new(HttpMethod.Get, $"{Endpoint}/animu/quote");
-        string? response = await requestMessage.SendAsync();
-        if (response is null)
+        using HttpResponseMessage response = await _httpClient.GetAsync($"others/lyrics?title={title}");
+        if (!response.IsSuccessStatusCode)
             return null;
 
-        JsonObject data = JsonNode.Parse(response)!.AsObject();
-        return $"{data["sentence"]}\n\t- {data["character"]}, {data["anime"]}";
+        return await response.Content.ReadFromJsonAsync<LyricsResult>();
     }
+
+    public async ValueTask<AnimeQuote?> GetAnimeQuoteAsync()
+    {
+        using HttpResponseMessage response = await _httpClient.GetAsync("anime/quote");
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        return await response.Content.ReadFromJsonAsync<AnimeQuote>();
+    }
+}
+
+public sealed class LyricsResult
+{
+    public string Title { get; } = string.Empty;
+    public string Author { get; } = string.Empty;
+    public string Lyrics { get; } = string.Empty;
+    public string Thumbnail { get; } = string.Empty;
+}
+
+public sealed class AnimeQuote
+{
+    public string Sentence { get; } = string.Empty;
+    public string Character { get; } = string.Empty;
+    public string Anime { get; } = string.Empty;
 }

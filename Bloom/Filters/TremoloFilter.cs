@@ -3,17 +3,15 @@ namespace Bloom.Filters;
 /// <summary>
 /// Uses amplification to create a shuddering effect, where the volume quickly oscillates.
 /// </summary>
-public readonly struct TremoloFilter : IFilter
+public sealed class TremoloFilter : IFilter
 {
     /// <summary>
-    /// The frequency (0.0 ≤).
+    /// The frequency.
     /// </summary>
-    [JsonPropertyName("frequency")]
     public float Frequency { get; init; }
 
     /// <summary>
-    /// The depth (0.0 ≤).
+    /// The depth.
     /// </summary>
-    [JsonPropertyName("depth")]
     public float Depth { get; init; }
 }

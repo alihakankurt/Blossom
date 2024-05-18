@@ -1,123 +1,226 @@
+using System.Collections.Generic;
+
 namespace Bloom.Filters;
 
+/// <summary>
+/// Represents a filter preset with a set of equalizer bands and filters.
+/// </summary>
 public sealed class FilterPreset
 {
+    /// <summary>
+    /// Resets all bands to 0 and removes all filters.
+    /// </summary>
     public static readonly FilterPreset Flat;
-    public static readonly FilterPreset Bass;
-    public static readonly FilterPreset Classical;
-    public static readonly FilterPreset Electronic;
-    public static readonly FilterPreset Rock;
-    public static readonly FilterPreset Soft;
-    public static readonly FilterPreset EightDimensional;
-    public static readonly FilterPreset Nightcore;
-    public static readonly FilterPreset LoveNightcore;
-    public static readonly FilterPreset Tremolo;
-    public static readonly FilterPreset Vibrato;
-    public static readonly FilterPreset[] Presets;
 
-    public string Name { get; }
-    public float Volume { get; }
-    public EqualizerBand[] Bands { get; }
-    public IEnumerable<IFilter> Filters { get; }
+    /// <summary>
+    /// Boosts the lower frequencies.
+    /// </summary>
+    public static readonly FilterPreset Bass;
+
+    /// <summary>
+    /// Boosts the mid frequencies.
+    /// </summary>
+    public static readonly FilterPreset Classical;
+
+    /// <summary>
+    /// Boosts the high frequencies.
+    /// </summary>
+    public static readonly FilterPreset Electronic;
+
+    /// <summary>
+    /// Boosts the mid frequencies and cuts the high frequencies.
+    /// </summary>
+    public static readonly FilterPreset Rock;
+
+    /// <summary>
+    /// Applies a low-pass filter.
+    /// </summary>
+    public static readonly FilterPreset Soft;
+
+    /// <summary>
+    /// Rotates the audio around the listener.
+    /// </summary>
+    public static readonly FilterPreset Rotation;
+
+    /// <summary>
+    /// Speeds up the audio and boosts the pitch.
+    /// </summary>
+    public static readonly FilterPreset Nightcore;
+
+    /// <summary>
+    /// Speeds up the audio and boosts the pitch slightly.
+    /// </summary>
+    public static readonly FilterPreset LoveNightcore;
+
+    /// <summary>
+    /// Applies a tremolo effect.
+    /// </summary>
+    public static readonly FilterPreset Tremolo;
+
+    /// <summary>
+    /// Applies a vibrato effect.
+    /// </summary>
+    public static readonly FilterPreset Vibrato;
+
+    /// <summary>
+    /// The list of all filter presets.
+    /// </summary>
+    public static readonly FilterPreset[] Presets;
 
     static FilterPreset()
     {
-        Flat = new FilterPreset(nameof(Flat), 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray()
-        );
-        Bass = new FilterPreset(nameof(Bass), 1.0f,
-            new EqualizerBand[]
-            {
+        Flat = new FilterPreset
+        {
+            Name = nameof(Flat),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = []
+        };
+
+        Bass = new FilterPreset
+        {
+            Name = nameof(Bass),
+            Volume = 1.0f,
+            Equalizer = [
                 new(0, 0.6f), new(1, 0.7f), new(2, 0.8f), new(3, 0.55f), new(4, 0.25f),
                 new(5, 0.0f), new(6, -0.25f), new(7, -0.25f), new(8, -0.25f), new(9, -0.25f),
                 new(10, -0.25f), new(11, -0.25f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
-            }
-        );
-        Classical = new FilterPreset(nameof(Classical), 1.0f,
-            new EqualizerBand[]
-            {
+            ],
+            Filters = []
+        };
+
+        Classical = new FilterPreset
+        {
+            Name = nameof(Classical),
+            Volume = 1.0f,
+            Equalizer = [
                 new(0, 0.375f), new(1, 0.35f), new(2, 0.125f), new(3, 0.0f), new(4, 0.0f),
                 new(5, 0.125f), new(6, 0.55f), new(7, 0.5f), new(8, 0.125f), new(9, 0.25f),
                 new(10, 0.2f), new(11, 0.25f), new(12, 0.3f), new(13, 0.25f), new(14, 0.3f),
-            }
-        );
-        Electronic = new FilterPreset(nameof(Electronic), 1.0f,
-            new EqualizerBand[]
-            {
+            ],
+            Filters = []
+        };
+
+        Electronic = new FilterPreset
+        {
+            Name = nameof(Electronic),
+            Volume = 1.0f,
+            Equalizer = [
                 new(0, 0.375f), new(1, 0.35f), new(2, 0.125f), new(3, 0.0f), new(4, 0.0f),
                 new(5, -0.125f), new(6, -0.125f), new(7, 0.0f), new(8, 0.25f), new(9, 0.125f),
                 new(10, 0.15f), new(11, 0.2f), new(12, 0.25f), new(13, 0.35f), new(14, 0.4f),
-            }
-        );
-        Rock = new FilterPreset(nameof(Rock), 1.0f,
-            new EqualizerBand[]
-            {
+            ],
+            Filters = []
+        };
+
+        Rock = new FilterPreset
+        {
+            Name = nameof(Rock),
+            Volume = 1.0f,
+            Equalizer = [
                 new(0, 0.3f), new(1, 0.25f), new(2, 0.2f), new(3, 0.1f), new(4, 0.05f),
                 new(5, -0.05f), new(6, -0.15f), new(7, -0.2f), new(8, -0.1f), new(9, -0.05f),
                 new(10, 0.05f), new(11, 0.1f), new(12, 0.2f), new(13, 0.25f), new(14, 0.3f),
-            }
-        );
-        Soft = new FilterPreset(nameof(Soft), 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray(),
-            new LowPassFilter { Smoothing = 20.0f }
-        );
-        EightDimensional = new FilterPreset("8D", 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray(),
-            new RotationFilter { RotationHz = 0.2f }
-        );
-        Nightcore = new FilterPreset(nameof(Nightcore), 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray(),
-            new TimescaleFilter { Speed = 1.3f, Pitch = 1.3f, Rate = 1.0f }
-        );
-        LoveNightcore = new FilterPreset(nameof(LoveNightcore), 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray(),
-            new TimescaleFilter { Speed = 1.1f, Pitch = 1.2f, Rate = 1.0f }
-        );
-        Tremolo = new FilterPreset(nameof(Tremolo), 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray(),
-            new TremoloFilter { Frequency = 10.0f, Depth = 0.5f }
-        );
-        Vibrato = new FilterPreset(nameof(Vibrato), 1.0f,
-            Enumerable.Range(0, 15)
-                .Select((index) => new EqualizerBand(index, 0.0f))
-                .ToArray(),
-            new VibratoFilter { Frequency = 10.0f, Depth = 0.9f }
-        );
-
-
-        Presets = new[]
-        {
-            Flat,
-            Bass,
-            Classical,
-            Electronic,
-            Rock,
-            Soft,
-            EightDimensional,
-            Nightcore,
-            LoveNightcore,
-            Tremolo,
-            Vibrato,
+            ],
+            Filters = []
         };
+
+        Soft = new FilterPreset
+        {
+            Name = nameof(Soft),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = [new LowPassFilter { Smoothing = 20.0f }]
+        };
+
+        Rotation = new FilterPreset
+        {
+            Name = nameof(Rotation),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = [new RotationFilter { RotationHz = 0.2f }]
+        };
+
+        Nightcore = new FilterPreset
+        {
+            Name = nameof(Nightcore),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = [new TimescaleFilter { Speed = 1.3f, Pitch = 1.3f, Rate = 1.0f }]
+        };
+
+        LoveNightcore = new FilterPreset
+        {
+            Name = nameof(LoveNightcore),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = [new TimescaleFilter { Speed = 1.1f, Pitch = 1.2f, Rate = 1.0f }]
+        };
+
+        Tremolo = new FilterPreset
+        {
+            Name = nameof(Tremolo),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = [new TremoloFilter { Frequency = 10.0f, Depth = 0.5f }]
+        };
+
+        Vibrato = new FilterPreset
+        {
+            Name = nameof(Vibrato),
+            Volume = 1.0f,
+            Equalizer = [
+                new(0, 0.0f), new(1, 0.0f), new(2, 0.0f), new(3, 0.0f), new(4, 0.0f),
+                new(5, 0.0f), new(6, 0.0f), new(7, 0.0f), new(8, 0.0f), new(9, 0.0f),
+                new(10, 0.0f), new(11, 0.0f), new(12, 0.0f), new(13, 0.0f), new(14, 0.0f),
+            ],
+            Filters = [new VibratoFilter { Frequency = 10.0f, Depth = 0.9f }]
+        };
+
+        Presets = [Flat, Bass, Classical, Electronic, Rock, Soft, Rotation, Nightcore, LoveNightcore, Tremolo, Vibrato];
     }
 
-    public FilterPreset(string name, float volume, EqualizerBand[] bands, params IFilter[] filters)
-    {
-        Name = name;
-        Volume = volume;
-        Bands = bands;
-        Filters = filters;
-    }
+    /// <summary>
+    /// The name of the preset.
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// The volume of the preset.
+    /// </summary>
+    public required float Volume { get; init; }
+
+    /// <summary>
+    /// The equalizer bands in the preset.
+    /// </summary>
+    public required EqualizerBand[] Equalizer { get; init; }
+
+    /// <summary>
+    /// The filters in the preset.
+    /// </summary>
+    public required IReadOnlyList<IFilter> Filters { get; init; }
 }

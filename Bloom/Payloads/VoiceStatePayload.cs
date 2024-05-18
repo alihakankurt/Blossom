@@ -1,20 +1,15 @@
+using System.Text.Json.Serialization;
+
 namespace Bloom.Payloads;
 
-internal sealed class VoiceStatePayload : IPayload
+internal sealed class VoiceStatePayload
 {
-    [JsonPropertyName("token"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public string? Token { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? Token { get; init; }
 
-    [JsonPropertyName("endpoint"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public string? Endpoint { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? Endpoint { get; init; }
 
-    [JsonPropertyName("sessionId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public string? SessionId { get; set; }
-
-    public VoiceStatePayload(string? token, string? endpoint, string? sessionId)
-    {
-        Token = token;
-        Endpoint = endpoint;
-        SessionId = sessionId;
-    }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? SessionId { get; init; }
 }

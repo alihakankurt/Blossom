@@ -1,32 +1,28 @@
 namespace Bloom.Filters;
 
 /// <summary>
-/// Mixes both channels (left and right), with a configurable factor on how much each channel affects the other.
+/// Mixes both channels (left and right), with a configurable factor <i>(0.0 to 1.0)</i> on how much each channel affects the other.
 /// With the defaults, both channels are kept independent of each other. Setting all factors to 0.5 means both channels get the same audio.
 /// </summary>
-public readonly struct ChannelMixFilter : IFilter
+public sealed class ChannelMixFilter : IFilter
 {
     /// <summary>
-    /// The left to left channel mix factor (>= 0.0 and ≤ 1.0).
+    /// The left to left channel mix factor.
     /// </summary>
-    [JsonPropertyName("leftToLeft")]
     public float LeftToLeft { get; init; }
 
     /// <summary>
-    /// The left to right channel mix factor (>= 0.0 and ≤ 1.0).
+    /// The left to right channel mix factor.
     /// </summary>
-    [JsonPropertyName("leftToRight")]
     public float LeftToRight { get; init; }
 
     /// <summary>
-    /// The right to left channel mix factor (>= 0.0 and ≤ 1.0).
+    /// The right to left channel mix factor.
     /// </summary>
-    [JsonPropertyName("rightToLeft")]
     public float RightToLeft { get; init; }
 
     /// <summary>
-    /// The right to right channel mix factor (>= 0.0 and ≤ 1.0).
+    /// The right to right channel mix factor.
     /// </summary>
-    [JsonPropertyName("rightToRight")]
     public float RightToRight { get; init; }
 }

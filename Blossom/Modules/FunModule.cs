@@ -1,4 +1,12 @@
-﻿namespace Blossom.Modules;
+﻿using System;
+using System.Text;
+using System.Threading.Tasks;
+using Blossom.Utilities;
+using Blossom.Services;
+using Discord;
+using Discord.Interactions;
+
+namespace Blossom.Modules;
 
 public sealed class FunModule : BaseInteractionModule
 {
@@ -8,37 +16,44 @@ public sealed class FunModule : BaseInteractionModule
 
     static FunModule()
     {
-        CoinSides = new[] { "Heads", "Tails" };
-        UwuFaces = new[] { "uwu", "UwU", "(・`ω´・)", ";;w;;", ">w<", "^w^", ">.<", "(ᵘﻌᵘ)", "ᵾwᵾ", "𝕌𝕨𝕌", "𝓤𝔀𝓤", "( ｡ᵘ ᵕ ᵘ ｡)", "( ᵘ ꒳ ᵘ ✼)", "(⁄˘⁄ ⁄ ω⁄ ⁄ ˘⁄)♡", "✧･ﾟ: *✧･ﾟ♡*(ᵘʷᵘ)*♡･ﾟ✧*:･ﾟ✧" };
-        Fruits = new[] { ":cherries:", ":tangerine:", ":watermelon:", ":lemon:", ":peach:", ":grapes:", ":pineapple:", ":blueberries:" };
+        CoinSides = ["Heads", "Tails"];
+        UwuFaces = ["uwu", "UwU", "(・`ω´・)", ";;w;;", ">w<", "^w^", ">.<", "(ᵘﻌᵘ)", "ᵾwᵾ", "𝕌𝕨𝕌", "𝓤𝔀𝓤", "( ｡ᵘ ᵕ ᵘ ｡)", "( ᵘ ꒳ ᵘ ✼)", "(⁄˘⁄ ⁄ ω⁄ ⁄ ˘⁄)♡", "✧･ﾟ: *✧･ﾟ♡*(ᵘʷᵘ)*♡･ﾟ✧*:･ﾟ✧"];
+        Fruits = [":cherries:", ":tangerine:", ":watermelon:", ":lemon:", ":peach:", ":grapes:", ":pineapple:", ":blueberries:"];
     }
 
-    public FunModule(IServiceProvider services) : base(services)
+    private readonly SomeRandomApi _someRandomApi;
+
+    public FunModule(IServiceProvider services, SomeRandomApi someRandomApi) : base(services)
     {
+        _someRandomApi = someRandomApi;
     }
 
     [SlashCommand("hi", "hi")]
     public async Task HiCommand()
     {
-        await RespondAsync($"Hi, `{User.GlobalName}`. How are you?");
+        await RespondAsync($"Hi, {User.GlobalName}. How are you?");
     }
 
     [SlashCommand("flip", "Flips a coin")]
     public async Task FlipCommand()
     {
-        await RespondWithEmbedAsync($":coin: {CoinSides.Choose()}");
+        int index = Random.Shared.Next(CoinSides.Length);
+        Embed embed = EmbedUtility.CreateEmbed(description: $":coin: {CoinSides[index]}", color: Cherry);
+        await RespondAsync(embed: embed);
     }
 
     [SlashCommand("roll", "Rolls a dice")]
     public async Task RollCommand()
     {
-        await RespondWithEmbedAsync($":game_die: {Extensions.Random(1, 7)}");
+        int face = Random.Shared.Next(1, 7);
+        Embed embed = EmbedUtility.CreateEmbed(description: $":game_die: {face}", color: Cherry);
+        await RespondAsync(embed: embed);
     }
 
     [SlashCommand("luck", "Checks your luck")]
     public async Task LuckCommand()
     {
-        float luck = Extensions.Random(0, 101);
+        float luck = Random.Shared.Next(0, 101);
         string message = $"Your luck ratio is `{luck / 100.0:n2}`. ";
         if (luck < 1)
         {
@@ -85,18 +100,18 @@ public sealed class FunModule : BaseInteractionModule
         }
 
         result.Append(' ');
-        result.Append(UwuFaces.Choose());
+        result.Append(UwuFaces[Random.Shared.Next(UwuFaces.Length)]);
         await RespondAsync(result.ToString());
     }
 
     [SlashCommand("slot", "Runs slot machine")]
     public async Task SlotCommand()
     {
-        string a = Fruits.Choose();
-        string b = Fruits.Choose();
-        string c = Fruits.Choose();
+        string a = Fruits[Random.Shared.Next(Fruits.Length)];
+        string b = Fruits[Random.Shared.Next(Fruits.Length)];
+        string c = Fruits[Random.Shared.Next(Fruits.Length)];
 
-        StringBuilder result = new($"[ {a} {b} {c} ] ");
+        var result = new StringBuilder($"[ {a} {b} {c} ] ");
 
         if (a == b && a == c)
             result.Append((a == Fruits[0]) ? "Cherries, yum!!" : "Congrats, you can taste them all.");
@@ -108,17 +123,22 @@ public sealed class FunModule : BaseInteractionModule
         await RespondAsync(result.ToString());
     }
 
-    [SlashCommand("joke", "Makes a joke")]
-    public async Task JokeCommand()
-    {
-        var joke = await SomeRandomApi.GetJokeAsync();
-        await RespondAsync(joke);
-    }
-
     [SlashCommand("quote", "Says a quote from animes")]
     public async Task QuoteCommand()
     {
-        var quote = await SomeRandomApi.GetQuoteAsync();
-        await RespondAsync(quote);
+        AnimeQuote? quote = await _someRandomApi.GetAnimeQuoteAsync();
+        if (quote is null)
+        {
+            await RespondAsync("I'm sorry, I couldn't find any quotes right now.");
+            return;
+        }
+
+        Embed embed = EmbedUtility.CreateEmbed(
+            description: quote.Sentence,
+            color: Cherry,
+            footer: EmbedUtility.CreateFooter(quote.Character, quote.Anime)
+        );
+
+        await RespondAsync(embed: embed);
     }
 }

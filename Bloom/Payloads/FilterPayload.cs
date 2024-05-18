@@ -1,48 +1,52 @@
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using Bloom.Filters;
+
 namespace Bloom.Payloads;
 
-internal sealed class FilterPayload : IPayload
+internal sealed class FilterPayload
 {
-    [JsonPropertyName("volume"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public float Volume { get; }
 
-    [JsonPropertyName("equalizer"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public IEnumerable<EqualizerBand> Bands { get; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public EqualizerBand[] Equalizer { get; }
 
-    [JsonPropertyName("karaoke"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public KaraokeFilter Karaoke { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public KaraokeFilter? Karaoke { get; set; }
 
-    [JsonPropertyName("timescale"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public TimescaleFilter Timescale { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public TimescaleFilter? Timescale { get; set; }
 
-    [JsonPropertyName("tremolo"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public TremoloFilter Tremolo { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public TremoloFilter? Tremolo { get; set; }
 
-    [JsonPropertyName("vibrato"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public VibratoFilter Vibrato { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public VibratoFilter? Vibrato { get; set; }
 
-    [JsonPropertyName("rotation"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public RotationFilter Rotation { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public RotationFilter? Rotation { get; set; }
 
-    [JsonPropertyName("distortion"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public DistortionFilter Distortion { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public DistortionFilter? Distortion { get; set; }
 
-    [JsonPropertyName("channelMix"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public ChannelMixFilter ChannelMix { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public ChannelMixFilter? ChannelMix { get; set; }
 
-    [JsonPropertyName("lowPass"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public LowPassFilter LowPass { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public LowPassFilter? LowPass { get; set; }
 
-    public FilterPayload(IFilter filter, float volume, IEnumerable<EqualizerBand> bands)
+    public FilterPayload(IFilter filter, float volume, EqualizerBand[] equalizer)
     {
         Volume = volume;
-        Bands = bands;
+        Equalizer = equalizer;
         SetFilter(filter);
     }
 
-    public FilterPayload(IEnumerable<IFilter> filters, float volume, IEnumerable<EqualizerBand> bands)
+    public FilterPayload(IReadOnlyList<IFilter> filters, float volume, EqualizerBand[] equalizer)
     {
         Volume = volume;
-        Bands = bands;
+        Equalizer = equalizer;
         foreach (IFilter filter in filters)
             SetFilter(filter);
     }

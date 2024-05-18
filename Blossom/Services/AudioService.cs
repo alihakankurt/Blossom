@@ -1,59 +1,132 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Bloom;
+using Bloom.Events;
+using Bloom.Filters;
+using Bloom.Playback;
+using Bloom.Searching;
+using Blossom.Modules;
+using Blossom.Utilities;
+using Discord;
+
 namespace Blossom.Services;
 
-public static class AudioService
+public sealed class AudioService : IService
 {
-    public static void Start(BloomNode bloomNode)
+    private readonly BloomNode _node;
+    private readonly SomeRandomApi _someRandomApi;
+
+    public AudioService(BloomNode node, SomeRandomApi someRandomApi)
     {
-        bloomNode.NodeException += NodeException;
-        bloomNode.TrackStarted += TrackStarted;
-        bloomNode.TrackEnded += TrackEnded;
-        bloomNode.TrackException += TrackException;
-        bloomNode.TrackStucked += TrackStucked;
+        _node = node;
+        _someRandomApi = someRandomApi;
     }
 
-    public static FilterPreset? GetFilterPreset(string name)
+    public async ValueTask InitializeAsync(CancellationToken cancellationToken = default)
     {
-        return FilterPreset.Presets.FirstOrDefault(
-            (preset) => string.CompareOrdinal(preset.Name, 0, name, 0, name.Length) is 0
-        );
+        _node.NodeException += NodeException;
+        _node.TrackStarted += TrackStarted;
+        _node.TrackEnded += TrackEnded;
+        _node.TrackException += TrackException;
+        _node.TrackStucked += TrackStucked;
+
+        await _node.ConnectAsync();
+    }
+
+    public bool HasPlayer(IGuild guild)
+    {
+        return _node.TryGetPlayer(guild, out _);
+    }
+
+    public BloomPlayer? GetPlayer(IGuild guild)
+    {
+        _ = _node.TryGetPlayer(guild, out BloomPlayer? player);
+        return player;
+    }
+
+    public async ValueTask<BloomPlayer> JoinAsync(IVoiceChannel voiceChannel, IMessageChannel textChannel)
+    {
+        return await _node.JoinAsync(voiceChannel, textChannel);
+    }
+
+    public async ValueTask<BloomPlayer> GetOrJoinAsync(IVoiceChannel voiceChannel, IMessageChannel textChannel)
+    {
+        if (_node.TryGetPlayer(voiceChannel.Guild, out BloomPlayer? player))
+            return player;
+
+        return await JoinAsync(voiceChannel, textChannel);
+    }
+
+    public async ValueTask LeaveAsync(IGuild guild)
+    {
+        await _node.LeaveAsync(guild);
+    }
+
+    public async ValueTask<LoadResult> SearchAsync(string query)
+    {
+        query = query.Trim('<', '>');
+        bool isWellFormed = Uri.IsWellFormedUriString(query, UriKind.Absolute);
+        SearchKind searchKind = isWellFormed ? SearchKind.Direct : SearchKind.YouTube;
+        LoadResult result = await _node.SearchAsync(query, searchKind);
+        return result;
+    }
+
+    public async ValueTask<LyricsResult?> GetLyricsAsync(BloomTrack bloomTrack)
+    {
+        return await _someRandomApi.GetLyricsAsync(bloomTrack.Title);
     }
 
     private static Task NodeException(NodeExceptionEventArgs args)
     {
-        Console.WriteLine($"LavalinkException: {args.Message}");
+        Console.WriteLine($"{nameof(BloomNode)}: {args.Message}");
         return Task.CompletedTask;
+    }
+
+    public FilterPreset? GetFilterPreset(string name)
+    {
+        return FilterPreset.Presets.FirstOrDefault(
+            (preset) => string.Compare(preset.Name, name, StringComparison.OrdinalIgnoreCase) == 0
+        );
     }
 
     private static async Task TrackStarted(TrackStartEventArgs args)
     {
-        await args.Player.TextChannel.SendEmbedAsync(
+        Embed embed = EmbedUtility.CreateEmbed(
             title: "🎶 Now Playing",
             description: $"[{args.Player.Track!.Title}]({args.Player.Track.Url})\n",
             color: BaseInteractionModule.Cherry
         );
+
+        await args.Player.TextChannel.SendMessageAsync(embed: embed);
     }
 
-    private static Task TrackEnded(TrackEndEventArgs args)
+    private static async Task TrackEnded(TrackEndEventArgs args)
     {
-        if (args.ShouldPlayNext && (args.Player.Queue.HasNext || args.Player.Queue.LoopMode is not LoopMode.None))
-            return args.Player.PlayNextAsync();
+        Console.WriteLine(args.EndReason);
+        if (args.MayStartNext && args.Player.Queue.HasNext)
+        {
+            await args.Player.PlayNextAsync();
+            return;
+        }
 
-        return args.Player.StopAsync();
+        await args.Player.StopAsync();
     }
 
-    private static Task TrackException(TrackExceptionEventArgs args)
-    {
-        if (args.Player.Queue.HasNext)
-            return args.Player.PlayNextAsync();
-
-        return args.Player.StopAsync();
-    }
-
-    private static Task TrackStucked(TrackStuckEventArgs args)
+    private static async Task TrackException(TrackExceptionEventArgs args)
     {
         if (args.Player.Queue.HasNext)
-            return args.Player.PlayNextAsync();
+            await args.Player.PlayNextAsync();
 
-        return args.Player.StopAsync();
+        await args.Player.StopAsync();
+    }
+
+    private static async Task TrackStucked(TrackStuckEventArgs args)
+    {
+        if (args.Player.Queue.HasNext)
+            await args.Player.PlayNextAsync();
+
+        await args.Player.StopAsync();
     }
 }

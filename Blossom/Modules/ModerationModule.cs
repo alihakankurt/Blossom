@@ -1,4 +1,14 @@
-﻿namespace Blossom.Modules;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Blossom.AutoCompleteHandlers;
+using Discord;
+using Discord.Interactions;
+using Discord.Rest;
+using Discord.WebSocket;
+
+namespace Blossom.Modules;
 
 public sealed class ModerationModule : BaseInteractionModule
 {
@@ -11,12 +21,12 @@ public sealed class ModerationModule : BaseInteractionModule
     [SlashCommand("kick", "Kicks a member from this guild"), RequireUserPermission(GuildPermission.KickMembers)]
     public async Task KickCommand([Summary(description: "The user to kick from guild")] SocketGuildUser target, [Summary(description: "The reason of the action")] string? reason = default)
     {
-        int userHierarchy = ((SocketGuildUser)User).GetTopRole().Position;
-        int targetHierarchy = target.GetTopRole().Position;
+        int userHierarchy = ((SocketGuildUser)User).Roles.Max(x => x.Position);
+        int targetHierarchy = target.Roles.Max(x => x.Position);
 
         if (User.Id != Guild.OwnerId && userHierarchy <= targetHierarchy)
         {
-            await RespondEphemeralAsync("You need to be at higher position than `target` to kick!");
+            await RespondAsync("You need to be at higher position than `target` to kick!", ephemeral: true);
             return;
         }
 
@@ -27,12 +37,12 @@ public sealed class ModerationModule : BaseInteractionModule
     [SlashCommand("ban", "Bans a member from this guild"), RequireUserPermission(GuildPermission.BanMembers)]
     public async Task BanCommand([Summary(description: "The user to ban from guild")] SocketGuildUser target, [Summary(description: "The reason of the action")] string? reason = default)
     {
-        int userHierarchy = ((SocketGuildUser)User).GetTopRole().Position;
-        int targetHierarchy = target.GetTopRole().Position;
+        int userHierarchy = ((SocketGuildUser)User).Roles.Max(x => x.Position);
+        int targetHierarchy = target.Roles.Max(x => x.Position);
 
         if (User.Id != Guild.OwnerId && userHierarchy <= targetHierarchy)
         {
-            await RespondEphemeralAsync("You need to be at higher position than `target` to ban!");
+            await RespondAsync("You need to be at higher position than `target` to ban!", ephemeral: true);
             return;
         }
 
@@ -41,7 +51,7 @@ public sealed class ModerationModule : BaseInteractionModule
     }
 
     [SlashCommand("unban", "Removes ban from a banned user for this guild"), RequireUserPermission(GuildPermission.BanMembers)]
-    public async Task UnbanCommand([Summary(description: "The user id to remove ban for guild"), AutoComplete<BanAutoCompleteHandler>()] ulong target, [Summary(description: "The reason of the action")] string? reason = default)
+    public async Task UnbanCommand([Summary(description: "The user id to remove ban for guild"), Autocomplete(typeof(BanAutocompleteHandler))] ulong target, [Summary(description: "The reason of the action")] string? reason = default)
     {
         RestBan ban = await Guild.GetBanAsync(target);
 
@@ -59,8 +69,8 @@ public sealed class ModerationModule : BaseInteractionModule
     public async Task ClearCommand([Summary(description: "The amount of messages to delete"), MinValue(1), MaxValue(128)] int count)
     {
         SocketTextChannel channel = (SocketTextChannel)Channel;
-        IEnumerable<IMessage> messages = await channel.GetMessagesAsync(count).FlattenAsync();
+        IReadOnlyList<IMessage> messages = [.. await channel.GetMessagesAsync(count).FlattenAsync()];
         await channel.DeleteMessagesAsync(messages);
-        await RespondEphemeralAsync($"✅ `{messages.Count()}` message(s) deleted.");
+        await RespondAsync($"✅ `{messages.Count}` message(s) deleted.", ephemeral: true);
     }
 }

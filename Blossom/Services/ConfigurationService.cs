@@ -1,42 +1,60 @@
-﻿namespace Blossom.Services;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-public static class ConfigurationService
+namespace Blossom.Services;
+
+public sealed class ConfigurationService : IService
 {
-    private const string FileName = "config.cfg";
-    private const string Seperator = "=";
+    public const char Seperator = '=';
+    public const string FileName = "config.cfg";
 
-    private static readonly Dictionary<string, string> _keyValuePairs = new();
+    private readonly Dictionary<string, string> _settings;
 
-    public static void Start()
+    public ConfigurationService()
+    {
+        _settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async ValueTask InitializeAsync(CancellationToken cancellationToken = default)
     {
         string path = Path.Combine(AppContext.BaseDirectory, FileName);
         if (!File.Exists(path))
             throw new FileNotFoundException($"Configuration file not found! Make sure you have a file named {FileName}");
 
-        Array.ForEach(File.ReadAllLines(path), (line) =>
+        string[] lines = await File.ReadAllLinesAsync(path, cancellationToken);
+        foreach (string line in lines)
         {
-            string[] lines = line.Split(Seperator).ToArray();
-            if (lines.Length is not 2)
+            int index = line.AsSpan().IndexOf(Seperator);
+            if (index == -1)
+            {
                 throw new InvalidOperationException($"Invalid matching on {line} in configuration file! Make sure you seperated the key and value with {Seperator}");
+            }
 
-            _keyValuePairs.Add(lines[0], lines[1]);
-        });
+            string key = line[..index];
+            string value = line[(index + 1)..];
+            _settings.Add(key, value);
+        }
     }
 
-    public static string Get(string key)
+    public string Get(string key)
     {
-        return _keyValuePairs.TryGetValue(key, out string? value)
-            ? value
-            : throw new InvalidOperationException($"Couldn't find {key} in configuration");
+        if (!_settings.TryGetValue(key, out string? value))
+            throw new InvalidOperationException($"Couldn't find {key} in configuration");
+
+        return value;
     }
 
-    public static T Get<T>(string key)
+    public TValue Get<TValue>(string key) where TValue : notnull
     {
         string value = Get(key);
+        TypeConverter converter = TypeDescriptor.GetConverter(typeof(TValue));
+        if (converter.CanConvertFrom(typeof(string)))
+            return (TValue)converter.ConvertFromString(value)!;
 
-        System.ComponentModel.TypeConverter converter = System.ComponentModel.TypeDescriptor.GetConverter(typeof(T));
-        return converter.CanConvertFrom(typeof(string))
-            ? (T)converter.ConvertFrom(value)!
-            : throw new InvalidCastException($"Couldn't convert {value} to {typeof(T)}");
+        throw new InvalidOperationException($"Couldn't convert {value} to {typeof(TValue).Name}");
     }
 }
