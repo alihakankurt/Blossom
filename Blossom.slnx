@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Bloom/Bloom.csproj" />
+  <Project Path="Blossom/Blossom.csproj" />
+</Solution>
