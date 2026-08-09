@@ -1,12 +1,16 @@
+using System.Runtime.InteropServices;
 using Blossom;
 
-var bot = new Bot();
+using var cts = new CancellationTokenSource();
 
-Console.CancelKeyPress += async (_, args) =>
+void OnSignal(PosixSignalContext context)
 {
-    Console.WriteLine("Interrupted. Stopping bot...");
-    args.Cancel = false;
-    await bot.StopAsync();
-};
+    context.Cancel = true;
+    cts.Cancel();
+}
 
-await bot.RunAsync();
+using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnSignal);
+using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, OnSignal);
+
+var bot = new Bot();
+await bot.RunAsync(cts.Token);

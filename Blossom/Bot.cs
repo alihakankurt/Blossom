@@ -16,7 +16,6 @@ public sealed class Bot
     private readonly InteractionService _interactionService;
 
     private BlossomConfig _config = null!;
-    private CancellationTokenSource _cancellationTokenSource = null!;
 
     public Bot()
     {
@@ -55,10 +54,9 @@ public sealed class Bot
             .BuildServiceProvider();
     }
 
-    public async Task RunAsync()
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _config = ConfigurationService.Load();
-        _cancellationTokenSource = new CancellationTokenSource();
 
         await _interactionService.AddModuleAsync<AudioModule>(_services);
         await _interactionService.AddModuleAsync<FunModule>(_services);
@@ -68,17 +66,18 @@ public sealed class Bot
         await _discordClient.LoginAsync(TokenType.Bot, _config.Token);
         await _discordClient.StartAsync();
 
-        await Task.Delay(Timeout.Infinite, _cancellationTokenSource.Token);
-
-    }
-
-    public async ValueTask StopAsync()
-    {
-        await _cancellationTokenSource.CancelAsync();
-        _cancellationTokenSource.Dispose();
-
-        await _discordClient.StopAsync();
-        await _discordClient.LogoutAsync();
+        try
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            await _discordClient.StopAsync();
+            await _discordClient.LogoutAsync();
+        }
     }
 
     private async Task Ready()
