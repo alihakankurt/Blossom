@@ -1,6 +1,5 @@
 using Bloom;
 using Bloom.Events;
-using Bloom.Filters;
 using Bloom.Playback;
 using Bloom.Searching;
 using Blossom.Modules;
@@ -20,7 +19,7 @@ public sealed class AudioService
         _someRandomApi = someRandomApi;
     }
 
-    public async ValueTask InitializeAsync(CancellationToken cancellationToken = default)
+    public async ValueTask InitializeAsync()
     {
         _node.NodeException += NodeException;
         _node.TrackStarted += TrackStarted;
@@ -82,13 +81,6 @@ public sealed class AudioService
     {
         Console.WriteLine($"{nameof(BloomNode)}: {args.Message}");
         return ValueTask.CompletedTask;
-    }
-
-    public FilterPreset? GetFilterPreset(string name)
-    {
-        return FilterPreset.Presets.FirstOrDefault(
-            (preset) => string.Compare(preset.Name, name, StringComparison.OrdinalIgnoreCase) == 0
-        );
     }
 
     private static async ValueTask TrackStarted(TrackStartEventArgs args)

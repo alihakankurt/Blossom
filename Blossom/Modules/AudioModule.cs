@@ -291,7 +291,9 @@ public sealed class AudioModule : BaseInteractionModule
     public async Task FilterCommand([Summary(description: "The name of the preset"), Autocomplete(typeof(FilterAutocompleteHandler))] string name)
     {
         BloomPlayer player = _audioService.GetPlayer(Guild)!;
-        FilterPreset? preset = _audioService.GetFilterPreset(name);
+        FilterPreset? preset = FilterPreset.Presets.FirstOrDefault(
+            (preset) => string.Compare(preset.Name, name, StringComparison.OrdinalIgnoreCase) == 0);
+
         if (preset is null)
         {
             await RespondAsync("Preset couldn't found with provided name!");
