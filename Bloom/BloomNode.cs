@@ -110,8 +110,8 @@ public sealed class BloomNode : IAsyncDisposable
         _discordClient.UserVoiceStateUpdated += UserVoiceStateUpdated;
 
         _webSocketClient.Options.SetRequestHeader("User-Id", _discordClient.CurrentUser.Id.ToString());
-        _webSocketClient.Options.SetRequestHeader("Client-Name", $"{nameof(Bloom)}/{typeof(BloomNode).Assembly.GetName().Version}");
-        _webSocketClient.Options.SetRequestHeader("Num-Shards", _configuration.ShardCount.ToString());
+        var assemblyVersion = typeof(BloomNode).Assembly.GetName().Version;
+        _webSocketClient.Options.SetRequestHeader("Client-Name", $"{nameof(Bloom)}/{assemblyVersion}");
         _webSocketClient.Options.SetRequestHeader("Authorization", _configuration.Authorization);
 
         _restClient.BaseAddress = new Uri(_configuration.RestEndpoint);
@@ -132,7 +132,7 @@ public sealed class BloomNode : IAsyncDisposable
             catch (WebSocketException ex)
             {
                 NodeException?.Invoke(new NodeExceptionEventArgs(ex.Message));
-                await Task.Delay(_configuration.ReconnectDelayInMiliseconds * reconnectAttemps, cancellationToken);
+                await Task.Delay(_configuration.ReconnectDelay * reconnectAttemps, cancellationToken);
                 await EstablishConnectionAsync(reconnectAttemps + 1);
             }
         }
@@ -370,6 +370,7 @@ public sealed class BloomNode : IAsyncDisposable
                 Token = voiceServer.Token,
                 Endpoint = voiceServer.Endpoint,
                 SessionId = player.VoiceSessionId,
+                ChannelId = player.VoiceChannel.Id.ToString(),
             }
         });
     }

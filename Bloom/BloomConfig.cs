@@ -31,11 +31,6 @@ public sealed class BloomConfig
     public bool IsSecure { get; init; } = false;
 
     /// <summary>
-    /// The number of shards to use.
-    /// </summary>
-    public int ShardCount { get; init; } = 1;
-
-    /// <summary>
     /// Whether the bot should deafen itself.
     /// </summary>
     public bool SelfDeaf { get; init; } = true;
@@ -51,11 +46,17 @@ public sealed class BloomConfig
     public int ReconnectAttemps { get; init; } = 10;
 
     /// <summary>
-    /// The delay in milliseconds between each reconnect attempt.
+    /// The delay between each reconnect attempt.
     /// </summary>
-    public int ReconnectDelayInMiliseconds { get; init; } = 10_000;
+    public TimeSpan ReconnectDelay { get; init; } = TimeSpan.FromSeconds(10_000);
 
+    /// <summary>
+    /// The web socket endpoint of Lavalink server.
+    /// </summary>
     internal string WebSocketEndpoint => $"{(IsSecure ? "wss" : "ws")}://{Hostname}:{Port}/v4/websocket";
 
+    /// <summary>
+    /// The REST API endpoint of Lavalink server.
+    /// </summary>
     internal string RestEndpoint => $"{(IsSecure ? "https" : "http")}://{Hostname}:{Port}/v4/";
 }

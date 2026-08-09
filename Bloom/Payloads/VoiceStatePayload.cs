@@ -12,4 +12,7 @@ internal sealed class VoiceStatePayload
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? SessionId { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? ChannelId { get; init; }
 }
