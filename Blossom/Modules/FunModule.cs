@@ -84,17 +84,42 @@ public sealed class FunModule : BaseInteractionModule
     [SlashCommand("uwuify", "Sends your message back in a cute way.")]
     public async Task UwuCommand([Summary(description: "The text to uwuify >.<"), MaxValue(512)] string text)
     {
+        static bool IsVowel(char ch)
+        {
+            return ch is 'A' or 'E' or 'I' or 'O' or 'U'
+                      or 'a' or 'e' or 'i' or 'o' or 'u';
+        }
+
         var result = new StringBuilder();
         for (int i = 0; i < text.Length; i++)
         {
             if (text[i] is 'L' or 'R')
+            {
                 result.Append('W');
+            }
             else if (text[i] is 'l' or 'r')
+            {
                 result.Append('w');
-            else if (text[i] is 'o' or 'O' && i > 0 && text[i - 1] is 'N' or 'M' or 'n' or 'm')
-                result.Append(text[i] is 'o' ? "yo" : "YO");
+            }
+            else if (text[i] is '.' or '!')
+            {
+                result.Append('~');
+            }
             else
+            {
+                if (i > 0 && IsVowel(text[i]))
+                {
+                    _ = text[i - 1] switch
+                    {
+                        'N' when char.IsLower(text[i]) => result.Append('y'),
+                        'N' => result.Append('Y'),
+                        'n' => result.Append('y'),
+                        _ => default,
+                    };
+                }
+
                 result.Append(text[i]);
+            }
         }
 
         result.Append(' ');
