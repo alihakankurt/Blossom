@@ -272,9 +272,12 @@ public sealed class BloomNode : IAsyncDisposable
             try
             {
                 int length = await ReceiveDataAsync(buffer);
-                using var stream = new MemoryStream(buffer, 0, length);
-                JsonNode? node = await JsonNode.ParseAsync(stream, cancellationToken: _cancellationTokenSource.Token);
-                HandleReceivedData(node);
+                if (length >= 2)
+                {
+                    using var stream = new MemoryStream(buffer, 0, length);
+                    JsonNode? node = await JsonNode.ParseAsync(stream, cancellationToken: _cancellationTokenSource.Token);
+                    HandleReceivedData(node);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -284,6 +287,8 @@ public sealed class BloomNode : IAsyncDisposable
                 NodeException?.Invoke(new NodeExceptionEventArgs(ex.Message));
             }
         }
+
+        ArrayPool<byte>.Shared.Return(buffer);
     }
 
     private async ValueTask<int> ReceiveDataAsync(byte[] buffer)
@@ -345,15 +350,18 @@ public sealed class BloomNode : IAsyncDisposable
             }
             else if (eventType == nameof(TrackEndEvent))
             {
-                TrackEnded?.Invoke(new TrackEndEventArgs(player, Enum.Parse<TrackEndReason>(node["reason"]!.GetValue<string>(), ignoreCase: true)));
+                var reason = Enum.Parse<TrackEndReason>(node["reason"]!.GetValue<string>(), ignoreCase: true);
+                TrackEnded?.Invoke(new TrackEndEventArgs(player, reason));
             }
             else if (eventType == nameof(TrackExceptionEvent))
             {
-                TrackException?.Invoke(new TrackExceptionEventArgs(player, ParseTool.ParseException(node["exception"]!)));
+                var exception = ParseTool.ParseException(node["exception"]!);
+                TrackException?.Invoke(new TrackExceptionEventArgs(player, exception));
             }
             else if (eventType == nameof(TrackStuckEvent))
             {
-                TrackStucked?.Invoke(new TrackStuckEventArgs(player, TimeSpan.FromMilliseconds(node["thresholdMs"]!.GetValue<long>())));
+                var threshold = TimeSpan.FromMilliseconds(node["thresholdMs"]!.GetValue<long>());
+                TrackStucked?.Invoke(new TrackStuckEventArgs(player, threshold));
             }
         }
     }
