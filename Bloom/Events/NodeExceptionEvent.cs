@@ -4,8 +4,8 @@ namespace Bloom.Events;
 /// Represents an asynchronous event handler that is called when an exception thrown.
 /// </summary>
 /// <param name="args">The <see cref="NodeExceptionEventArgs"/> that contains the event data.</param>
-/// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-public delegate ValueTask NodeExceptionEvent(NodeExceptionEventArgs args);
+/// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+public delegate Task NodeExceptionEvent(NodeExceptionEventArgs args);
 
 /// <summary>
 /// Provides data for the <see cref="NodeExceptionEvent"/>.

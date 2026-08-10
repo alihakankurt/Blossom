@@ -58,12 +58,12 @@ public sealed class AudioService
         return await JoinAsync(voiceChannel, textChannel);
     }
 
-    public async ValueTask LeaveAsync(IGuild guild)
+    public async Task LeaveAsync(IGuild guild)
     {
         await _node.LeaveAsync(guild);
     }
 
-    public async ValueTask<LoadResult> SearchAsync(string query)
+    public async Task<LoadResult> SearchAsync(string query)
     {
         query = query.Trim('<', '>');
         bool isWellFormed = Uri.IsWellFormedUriString(query, UriKind.Absolute);
@@ -72,18 +72,18 @@ public sealed class AudioService
         return result;
     }
 
-    public async ValueTask<LyricsResult?> GetLyricsAsync(BloomTrack bloomTrack)
+    public async Task<LyricsResult?> GetLyricsAsync(BloomTrack bloomTrack)
     {
         return await _someRandomApi.GetLyricsAsync(bloomTrack.Title);
     }
 
-    private static ValueTask NodeException(NodeExceptionEventArgs args)
+    private static Task NodeException(NodeExceptionEventArgs args)
     {
         Console.WriteLine($"{nameof(BloomNode)}: {args.Message}");
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 
-    private static async ValueTask TrackStarted(TrackStartEventArgs args)
+    private static async Task TrackStarted(TrackStartEventArgs args)
     {
         Embed embed = EmbedUtility.CreateEmbed(
             title: "🎶 Now Playing",
@@ -94,7 +94,7 @@ public sealed class AudioService
         await args.Player.TextChannel.SendMessageAsync(embed: embed);
     }
 
-    private static async ValueTask TrackEnded(TrackEndEventArgs args)
+    private static async Task TrackEnded(TrackEndEventArgs args)
     {
         Console.WriteLine(args.EndReason);
         if (args.MayStartNext && args.Player.Queue.HasNext)
@@ -106,7 +106,7 @@ public sealed class AudioService
         await args.Player.StopAsync();
     }
 
-    private static async ValueTask TrackException(TrackExceptionEventArgs args)
+    private static async Task TrackException(TrackExceptionEventArgs args)
     {
         if (args.Player.Queue.HasNext)
             await args.Player.PlayNextAsync();
@@ -114,7 +114,7 @@ public sealed class AudioService
         await args.Player.StopAsync();
     }
 
-    private static async ValueTask TrackStucked(TrackStuckEventArgs args)
+    private static async Task TrackStucked(TrackStuckEventArgs args)
     {
         if (args.Player.Queue.HasNext)
             await args.Player.PlayNextAsync();

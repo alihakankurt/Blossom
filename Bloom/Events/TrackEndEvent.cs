@@ -6,8 +6,8 @@ namespace Bloom.Events;
 /// Represents an asynchronous event handler that is called when current track ends.
 /// </summary>
 /// <param name="args">The <see cref="TrackEndEventArgs"/> that contains the event data.</param>
-/// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-public delegate ValueTask TrackEndEvent(TrackEndEventArgs args);
+/// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+public delegate Task TrackEndEvent(TrackEndEventArgs args);
 
 /// <summary>
 /// Provides data for the <see cref="TrackEndEvent"/>.

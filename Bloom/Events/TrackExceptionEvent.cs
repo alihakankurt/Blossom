@@ -6,8 +6,8 @@ namespace Bloom.Events;
 /// Represents an asynchronous event handler that is called when current track caused an exception.
 /// </summary>
 /// <param name="args">The <see cref="TrackExceptionEventArgs"/> that contains the event data.</param>
-/// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-public delegate ValueTask TrackExceptionEvent(TrackExceptionEventArgs args);
+/// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+public delegate Task TrackExceptionEvent(TrackExceptionEventArgs args);
 
 /// <summary>
 /// Provides data for the <see cref="TrackExceptionEvent"/>.
