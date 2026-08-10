@@ -392,7 +392,7 @@ public sealed class AudioModule : BaseInteractionModule
         await DeferAsync();
 
         BloomPlayer player = _audioService.GetPlayer(Guild)!;
-        if (player.Track is null || player.State is not PlayerState.Playing or PlayerState.Paused)
+        if (player.Track is null || player.State is not (PlayerState.Playing or PlayerState.Paused))
         {
             await FollowupAsync("Nothing is playing right now!");
             return;

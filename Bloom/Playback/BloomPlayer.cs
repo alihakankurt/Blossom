@@ -128,7 +128,7 @@ public sealed class BloomPlayer : IAsyncDisposable
     /// <exception cref="InvalidOperationException"></exception>
     public async ValueTask StopAsync()
     {
-        if (State is not PlayerState.Playing or PlayerState.Paused)
+        if (State is not (PlayerState.Playing or PlayerState.Paused))
             throw new InvalidOperationException("The player is not playing right now");
 
         State = PlayerState.Stopped;
@@ -180,7 +180,7 @@ public sealed class BloomPlayer : IAsyncDisposable
     /// <exception cref="InvalidOperationException"></exception>
     public async ValueTask SeekAsync(TimeSpan position)
     {
-        if (State is not PlayerState.Playing or PlayerState.Paused)
+        if (State is not (PlayerState.Playing or PlayerState.Paused))
             throw new InvalidOperationException("Couldn't seek while the player isn't playing or paused");
 
         await Node.UpdatePlayerAsync(this, new PlayerUpdatePayload
